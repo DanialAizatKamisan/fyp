@@ -13,4 +13,3 @@ This platform uses advanced data analytics to **identify consumer trends** and p
 
 Together, we aim to promote sustainability and improve decision-making in the restaurant industry.
 ''')
-
