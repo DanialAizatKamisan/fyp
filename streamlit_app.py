@@ -105,6 +105,10 @@ elif options == "Prediction":
     st.header("Make Predictions")
     st.write("Use this section to predict consumer trends and potential sales using the trained Neural Network model.")
 
+    # Get the expected number of features from the model
+    expected_features = model.input_shape[1]  # This should be 298
+    st.write(f"Model expects {expected_features} features")
+
     # Separate numerical and categorical columns
     categorical_columns = [col for col in data.columns if data[col].dtype == 'object']
     numerical_columns = [col for col in data.columns if data[col].dtype != 'object' 
@@ -116,7 +120,7 @@ elif options == "Prediction":
     
     # Handle categorical inputs
     for col in categorical_columns:
-        unique_values = data[col].unique().tolist()
+        unique_values = sorted(data[col].unique().tolist())  # Sort to ensure consistent ordering
         input_data[col] = st.selectbox(f"Select {col}", unique_values)
 
     # Handle numerical inputs
@@ -130,12 +134,25 @@ elif options == "Prediction":
     input_df = pd.DataFrame([input_data])
 
     try:
-        # Handle categorical columns with one-hot encoding
-        encoded_categorical_data = pd.get_dummies(input_df[categorical_columns])
+        # First, create the full transformation pipeline using the training data
+        # This ensures we get exactly the same columns as during training
+        training_encoded = pd.get_dummies(data[categorical_columns])
+        encoded_columns = training_encoded.columns.tolist()
+
+        # Now encode the input data
+        input_encoded = pd.get_dummies(input_df[categorical_columns])
         
+        # Ensure input has all the same columns as training data
+        for col in encoded_columns:
+            if col not in input_encoded.columns:
+                input_encoded[col] = 0
+        
+        # Keep only the columns that were in the training data
+        input_encoded = input_encoded[encoded_columns]
+
         # Scale numerical columns
         scaler = StandardScaler()
-        if numerical_columns:  # Only scale if there are numerical columns
+        if numerical_columns:
             scaler.fit(data[numerical_columns])
             scaled_numerical_data = pd.DataFrame(
                 scaler.transform(input_df[numerical_columns]),
@@ -143,13 +160,18 @@ elif options == "Prediction":
             )
             
             # Combine numerical and categorical data
-            input_processed = pd.concat([scaled_numerical_data, encoded_categorical_data], axis=1)
+            input_processed = pd.concat([scaled_numerical_data, input_encoded], axis=1)
         else:
-            input_processed = encoded_categorical_data
+            input_processed = input_encoded
 
-        # Ensure columns match training data
-        expected_columns = pd.get_dummies(data[categorical_columns]).columns.tolist() + numerical_columns
-        input_processed = input_processed.reindex(columns=expected_columns, fill_value=0)
+        # Debug information
+        st.write("Debug Info:")
+        st.write(f"Number of features after processing: {input_processed.shape[1]}")
+        st.write("Feature columns:", input_processed.columns.tolist())
+
+        if input_processed.shape[1] != expected_features:
+            st.error(f"Feature mismatch! Got {input_processed.shape[1]} features but model expects {expected_features}")
+            st.stop()
 
     except Exception as e:
         st.error(f"Error during preprocessing: {str(e)}")
@@ -164,13 +186,15 @@ elif options == "Prediction":
     if st.button("Predict"):
         try:
             prediction = model.predict(input_processed)
-            prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
+            prediction_class = (prediction > 0.5).astype(int)
 
             st.subheader("Prediction Results")
             st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
             st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
         except Exception as e:
             st.error(f"Error during prediction: {str(e)}")
+            st.write("Model input shape:", model.input_shape)
+            st.write("Provided input shape:", input_processed.shape)
             
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
