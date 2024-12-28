@@ -12,18 +12,19 @@ st.title('Final Year Project: Using Data Analytics to Identify Consumer Trends a
 st.info('''
 Welcome to the **Restaurant Analytics Dashboard**!
 This platform uses advanced data analytics to **identify consumer trends** and provide insights to help **reduce food waste** in restaurants.
-
-**Features:**
-- View trends in consumer preferences.
-- Explore key metrics related to unit sales and waste reduction.
-- Predict future trends using machine learning models.
-
-Together, we aim to promote sustainability and improve decision-making in the restaurant industry.
 ''')
 
-# Sidebar Navigation
-st.sidebar.title("Navigation")
-options = st.sidebar.radio("Go to", ["Home", "Visualizations", "Prediction"])
+# Function to get all possible categorical values from the training data
+def get_training_feature_mapping(data):
+    """Create a mapping of all possible categorical values from training data"""
+    feature_mapping = {}
+    categorical_columns = [col for col in data.columns if data[col].dtype == 'object']
+    
+    # Get all unique values for each categorical column
+    for col in categorical_columns:
+        feature_mapping[col] = sorted(data[col].unique().tolist())
+    
+    return feature_mapping
 
 # Load the Cleaned Dataset
 @st.cache_data
@@ -37,36 +38,34 @@ def load_model_file():
     model = load_model("my_keras_model.h5")
     return model
 
+# Load data and model
 data = load_data()
 model = load_model_file()
 
-# Data Preprocessing Function
-def preprocess_input(input_df, original_df, scaler=None):
-    """
-    Preprocess input data to align with the training dataset structure.
-    - Ensures column consistency with the training dataset.
-    - Scales numeric data.
-    """
-    # Align input with original dataset columns
-    input_df = input_df.reindex(columns=original_df.columns, fill_value=0)
-    
-    # Scale numeric data
-    if scaler is None:
-        scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(input_df)
-    else:
-        scaled_data = scaler.transform(input_df)
-    return scaled_data, scaler
+# Sidebar Navigation
+st.sidebar.title("Navigation")
+options = st.sidebar.radio("Go to", ["Home", "Visualizations", "Prediction"])
 
 # 1. Home Section
 if options == "Home":
     st.header("Overview")
     st.write("""
-    This dashboard helps restaurant managers make data-driven decisions by analyzing consumer trends and predicting future outcomes. 
-    Use the navigation menu to explore visualizations or make predictions with our trained Neural Network model.
+    This dashboard helps restaurant managers make data-driven decisions by analyzing consumer trends 
+    and predicting future outcomes. Use the navigation menu to explore visualizations or make predictions 
+    with our trained Neural Network model.
     """)
-    st.write("Here’s a preview of the dataset:")
-    st.dataframe(data.head(10))
+    st.write("Here's a preview of the dataset:")
+    st.dataframe(data.head())
+    
+    # Display data info
+    st.write("\nDataset Information:")
+    st.write(f"Total Records: {len(data)}")
+    st.write(f"Total Features: {len(data.columns)}")
+    
+    # Display column types
+    st.write("\nColumn Types:")
+    for col in data.columns:
+        st.write(f"- {col}: {data[col].dtype}")
 
 # 2. Visualizations Section
 elif options == "Visualizations":
@@ -74,43 +73,20 @@ elif options == "Visualizations":
     st.write("Here are some key insights based on the data:")
 
     # Example Visualization: Unit Sales Distribution
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.histplot(data['unit_sales(in millions)'], kde=True, color="blue", ax=ax)
-    ax.set_title("Distribution of Unit Sales")
-    ax.set_xlabel("Unit Sales (in millions)")
-    ax.set_ylabel("Frequency")
-    st.pyplot(fig)
-
-    # Example Visualization: Waste vs. Unit Sales (if applicable)
-    if "waste(in millions)" in data.columns:
+    if 'unit_sales(in millions)' in data.columns:
         fig, ax = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(x=data['unit_sales(in millions)'], y=data['waste(in millions)'], ax=ax, color="orange")
-        ax.set_title("Relationship Between Unit Sales and Waste")
+        sns.histplot(data['unit_sales(in millions)'], kde=True, color="blue", ax=ax)
+        ax.set_title("Distribution of Unit Sales")
         ax.set_xlabel("Unit Sales (in millions)")
-        ax.set_ylabel("Waste (in millions)")
+        ax.set_ylabel("Frequency")
         st.pyplot(fig)
 
-    # Example Visualization: Top Categories (if category data exists)
-    if "category" in data.columns:
-        top_categories = data['category'].value_counts().head(10)
+    # Example Visualization: Waste vs. Unit Sales
+    if all(col in data.columns for col in ['unit_sales(in millions)', 'waste(in millions)']):
         fig, ax = plt.subplots(figsize=(10, 6))
-        sns.barplot(x=top_categories.values, y=top_categories.index, ax=ax, palette="viridis")
-        ax.set_title("Top 10 Categories by Frequency")
-        ax.set_xlabel("Count")
-        ax.set_ylabel("Category")
+        sns.scatterplot(data=data, x='unit_sales(in millions)', y='waste(in millions)', ax=ax)
+        ax.set_title("Relationship Between Unit Sales and Waste")
         st.pyplot(fig)
-
-# First, let's add a function to get all possible categorical values from the training data
-def get_training_feature_mapping(data):
-    """Create a mapping of all possible categorical values from training data"""
-    feature_mapping = {}
-    categorical_columns = [col for col in data.columns if data[col].dtype == 'object']
-    
-    # Get all unique values for each categorical column
-    for col in categorical_columns:
-        feature_mapping[col] = sorted(data[col].unique().tolist())
-    
-    return feature_mapping
 
 # 3. Prediction Section
 elif options == "Prediction":
@@ -128,6 +104,14 @@ elif options == "Prediction":
     st.write("Model expects:", model.input_shape[1], "features")
     st.write("Number of numerical columns:", len(numerical_columns))
     st.write("Number of categorical columns:", len(categorical_columns))
+    
+    # Display raw data structure
+    st.write("\nDataset Preview:")
+    st.write(data.head())
+    
+    # Display feature mapping
+    st.write("\nFeature Mapping:")
+    st.write(feature_mapping)
     
     # Input Features
     st.subheader("Input Features")
@@ -197,14 +181,6 @@ elif options == "Prediction":
             - Model expects {model.input_shape[1]} features
             - Difference: {input_processed.shape[1] - model.input_shape[1]} features
             """)
-            
-            # Show detailed feature information
-            st.write("\nDetailed Feature Information:")
-            for col in categorical_columns:
-                st.write(f"\n{col}:")
-                st.write(f"- Values in training data: {feature_mapping[col]}")
-                st.write(f"- Generated dummy columns: {[c for c in input_processed.columns if c.startswith(col+'_')]}")
-            
             st.stop()
 
     except Exception as e:
@@ -222,6 +198,7 @@ elif options == "Prediction":
             st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
         except Exception as e:
             st.error(f"Error during prediction: {str(e)}")
-            
-st.write("-----")
+
+# Footer
+st.write("---")
 st.markdown("**Made with ❤️ for Final Year Project**")
