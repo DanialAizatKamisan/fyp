@@ -105,45 +105,65 @@ elif options == "Prediction":
     st.header("Make Predictions")
     st.write("Use this section to predict consumer trends and potential sales using the trained Neural Network model.")
 
+    # Separate numerical and categorical columns
+    categorical_columns = [col for col in data.columns if data[col].dtype == 'object']
+    numerical_columns = [col for col in data.columns if data[col].dtype != 'object' 
+                        and col not in ['binary_target', 'unit_sales(in millions)']]
+
     # Input Features
     st.subheader("Input Features")
     input_data = {}
     
-    # Exclude target columns from input features
-    feature_columns = [col for col in data.columns if col not in ['binary_target', 'unit_sales(in millions)']]
-    
-    for col in feature_columns:
-        if data[col].dtype == 'object':  # Categorical input
-            unique_values = data[col].unique().tolist()
-            input_data[col] = st.selectbox(f"Select {col}", unique_values)
-        else:  # Numerical input
-            input_data[col] = st.slider(f"Select {col}", 
-                                      float(data[col].min()), 
-                                      float(data[col].max()), 
-                                      float(data[col].mean()))
+    # Handle categorical inputs
+    for col in categorical_columns:
+        unique_values = data[col].unique().tolist()
+        input_data[col] = st.selectbox(f"Select {col}", unique_values)
+
+    # Handle numerical inputs
+    for col in numerical_columns:
+        input_data[col] = st.slider(f"Select {col}", 
+                                  float(data[col].min()), 
+                                  float(data[col].max()), 
+                                  float(data[col].mean()))
 
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
 
-    # Get the expected columns based on the model's input shape
-    expected_columns = feature_columns  # Using the filtered columns from earlier
-    
-    # Ensure input data has all required columns
-    input_df = input_df.reindex(columns=expected_columns, fill_value=0)
-
-    # Scale Input Data
     try:
+        # Handle categorical columns with one-hot encoding
+        encoded_categorical_data = pd.get_dummies(input_df[categorical_columns])
+        
+        # Scale numerical columns
         scaler = StandardScaler()
-        scaler.fit(data[expected_columns])  # Fit the scaler on the original dataset
-        input_scaled = scaler.transform(input_df)
+        if numerical_columns:  # Only scale if there are numerical columns
+            scaler.fit(data[numerical_columns])
+            scaled_numerical_data = pd.DataFrame(
+                scaler.transform(input_df[numerical_columns]),
+                columns=numerical_columns
+            )
+            
+            # Combine numerical and categorical data
+            input_processed = pd.concat([scaled_numerical_data, encoded_categorical_data], axis=1)
+        else:
+            input_processed = encoded_categorical_data
+
+        # Ensure columns match training data
+        expected_columns = pd.get_dummies(data[categorical_columns]).columns.tolist() + numerical_columns
+        input_processed = input_processed.reindex(columns=expected_columns, fill_value=0)
+
     except Exception as e:
         st.error(f"Error during preprocessing: {str(e)}")
+        st.write("Debug info:")
+        st.write(f"Categorical columns: {categorical_columns}")
+        st.write(f"Numerical columns: {numerical_columns}")
+        st.write("Input data:")
+        st.write(input_df)
         st.stop()
 
     # Prediction Button
     if st.button("Predict"):
         try:
-            prediction = model.predict(input_scaled)
+            prediction = model.predict(input_processed)
             prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
 
             st.subheader("Prediction Results")
