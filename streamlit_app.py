@@ -119,18 +119,22 @@ elif options == "Prediction":
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
 
-    # Align input data with dataset structure
+# Align input data with the model's expected input
+expected_columns = model.input_shape[-1]  # Total number of columns the model expects
 drop_columns = ['binary_target', 'unit_sales(in millions)']
 
-# Check which columns exist in the dataset
-existing_columns = [col for col in drop_columns if col in data.columns]
-
-# Reindex input_df to match the dataset columns
-aligned_columns = data.drop(columns=existing_columns)
+# Ensure input_df has the same structure as the model was trained on
+aligned_columns = data.drop(columns=[col for col in drop_columns if col in data.columns])
 input_df = pd.get_dummies(input_df).reindex(columns=aligned_columns.columns, fill_value=0)
 
+# Add missing columns to match model's input shape if necessary
+missing_columns = expected_columns - input_df.shape[1]
+if missing_columns > 0:
+    for _ in range(missing_columns):
+        input_df[f"missing_column_{_}"] = 0
+
 # Scale Input Data
-input_scaled, _ = preprocess_input(input_df, aligned_columns)
+input_scaled, _ = preprocess_input(input_df)
 
 # Prediction Button
 if st.button("Predict"):
@@ -143,7 +147,6 @@ if st.button("Predict"):
         st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
     except Exception as e:
         st.error(f"Error during prediction: {str(e)}")
-
 
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
