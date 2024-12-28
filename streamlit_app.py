@@ -41,14 +41,22 @@ data = load_data()
 model = load_model_file()
 
 # Data Preprocessing Function
-def preprocess_input(data, scaler=None):
-    """Scale the input data."""
+def preprocess_input(input_df, original_df, scaler=None):
+    """
+    Preprocess input data to align with the training dataset structure.
+    - Ensures column consistency with the training dataset.
+    - Scales numeric data.
+    """
+    # Align input with original dataset columns
+    input_df = input_df.reindex(columns=original_df.columns, fill_value=0)
+    
+    # Scale numeric data
     if scaler is None:
         scaler = StandardScaler()
-        data = scaler.fit_transform(data)
+        scaled_data = scaler.fit_transform(input_df)
     else:
-        data = scaler.transform(data)
-    return data, scaler
+        scaled_data = scaler.transform(input_df)
+    return scaled_data, scaler
 
 # 1. Home Section
 if options == "Home":
@@ -101,7 +109,7 @@ elif options == "Prediction":
     st.subheader("Input Features")
     input_data = {}
     for col in data.columns:
-        if col != 'binary_target' and col != 'unit_sales(in millions)':
+        if col not in ['binary_target', 'unit_sales(in millions)']:
             if data[col].dtype == 'object':  # Categorical input
                 unique_values = data[col].unique().tolist()
                 input_data[col] = st.selectbox(f"Select {col}", unique_values)
@@ -110,24 +118,25 @@ elif options == "Prediction":
 
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
-    input_df = pd.get_dummies(input_df)  # Ensure proper encoding
 
-    # Fix for KeyError when dropping columns
-    drop_columns = ['binary_target', 'unit_sales(in millions)']
-    existing_columns = [col for col in drop_columns if col in data.columns]
-    input_df = input_df.reindex(columns=data.drop(columns=existing_columns).columns, fill_value=0)
+    # Align input data with dataset structure
+    aligned_columns = data.drop(columns=['binary_target', 'unit_sales(in millions)'])
+    input_df = pd.get_dummies(input_df).reindex(columns=aligned_columns.columns, fill_value=0)
 
     # Scale Input Data
-    input_scaled, _ = preprocess_input(input_df)
+    input_scaled, _ = preprocess_input(input_df, aligned_columns)
 
     # Prediction Button
     if st.button("Predict"):
-        prediction = model.predict(input_scaled)
-        prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
+        try:
+            prediction = model.predict(input_scaled)
+            prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
 
-        st.subheader("Prediction Results")
-        st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
-        st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
+            st.subheader("Prediction Results")
+            st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
+            st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
+        except Exception as e:
+            st.error(f"Error during prediction: {str(e)}")
 
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
