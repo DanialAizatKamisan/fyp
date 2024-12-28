@@ -111,15 +111,11 @@ elif options == "Prediction":
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
     input_df = pd.get_dummies(input_df)  # Ensure proper encoding
+
     # Fix for KeyError when dropping columns
-drop_columns = ['binary_target', 'unit_sales(in millions)']
-
-# Check which columns exist in the dataset
-existing_columns = [col for col in drop_columns if col in data.columns]
-
-# Reindex input_df to match the dataset columns
-input_df = input_df.reindex(columns=data.drop(columns=existing_columns).columns, fill_value=0)
-
+    drop_columns = ['binary_target', 'unit_sales(in millions)']
+    existing_columns = [col for col in drop_columns if col in data.columns]
+    input_df = input_df.reindex(columns=data.drop(columns=existing_columns).columns, fill_value=0)
 
     # Scale Input Data
     input_scaled, _ = preprocess_input(input_df)
