@@ -108,45 +108,49 @@ elif options == "Prediction":
     # Input Features
     st.subheader("Input Features")
     input_data = {}
-    for col in data.columns:
-        if col not in ['binary_target', 'unit_sales(in millions)']:
-            if data[col].dtype == 'object':  # Categorical input
-                unique_values = data[col].unique().tolist()
-                input_data[col] = st.selectbox(f"Select {col}", unique_values)
-            else:  # Numerical input
-                input_data[col] = st.slider(f"Select {col}", float(data[col].min()), float(data[col].max()), float(data[col].mean()))
+    
+    # Exclude target columns from input features
+    feature_columns = [col for col in data.columns if col not in ['binary_target', 'unit_sales(in millions)']]
+    
+    for col in feature_columns:
+        if data[col].dtype == 'object':  # Categorical input
+            unique_values = data[col].unique().tolist()
+            input_data[col] = st.selectbox(f"Select {col}", unique_values)
+        else:  # Numerical input
+            input_data[col] = st.slider(f"Select {col}", 
+                                      float(data[col].min()), 
+                                      float(data[col].max()), 
+                                      float(data[col].mean()))
 
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
 
-# Align input data with the model's expected input
-expected_columns = model.input_shape[-1]  # Total number of columns the model expects
-drop_columns = ['binary_target', 'unit_sales(in millions)']
+    # Get the expected columns based on the model's input shape
+    expected_columns = feature_columns  # Using the filtered columns from earlier
+    
+    # Ensure input data has all required columns
+    input_df = input_df.reindex(columns=expected_columns, fill_value=0)
 
-# Ensure alignment between input data and scaler
-expected_columns = data.drop(columns=['binary_target', 'unit_sales(in millions)']).columns
-input_df = input_df.reindex(columns=expected_columns, fill_value=0)
-
-# Scale Input Data
-try:
-    scaler = StandardScaler()
-    scaler.fit(data[expected_columns])  # Fit the scaler on the original dataset (without target column)
-    input_scaled = scaler.transform(input_df)
-except Exception as e:
-    st.error(f"Error during preprocessing: {str(e)}")
-    st.stop()
-
-# Prediction Button
-if st.button("Predict"):
+    # Scale Input Data
     try:
-        prediction = model.predict(input_scaled)
-        prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
-
-        st.subheader("Prediction Results")
-        st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
-        st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
+        scaler = StandardScaler()
+        scaler.fit(data[expected_columns])  # Fit the scaler on the original dataset
+        input_scaled = scaler.transform(input_df)
     except Exception as e:
-        st.error(f"Error during prediction: {str(e)}")
+        st.error(f"Error during preprocessing: {str(e)}")
+        st.stop()
 
+    # Prediction Button
+    if st.button("Predict"):
+        try:
+            prediction = model.predict(input_scaled)
+            prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
+
+            st.subheader("Prediction Results")
+            st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
+            st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
+        except Exception as e:
+            st.error(f"Error during prediction: {str(e)}")
+            
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
