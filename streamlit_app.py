@@ -120,23 +120,30 @@ elif options == "Prediction":
     input_df = pd.DataFrame([input_data])
 
     # Align input data with dataset structure
-    aligned_columns = data.drop(columns=['binary_target', 'unit_sales(in millions)'])
-    input_df = pd.get_dummies(input_df).reindex(columns=aligned_columns.columns, fill_value=0)
+drop_columns = ['binary_target', 'unit_sales(in millions)']
 
-    # Scale Input Data
-    input_scaled, _ = preprocess_input(input_df, aligned_columns)
+# Check which columns exist in the dataset
+existing_columns = [col for col in drop_columns if col in data.columns]
 
-    # Prediction Button
-    if st.button("Predict"):
-        try:
-            prediction = model.predict(input_scaled)
-            prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
+# Reindex input_df to match the dataset columns
+aligned_columns = data.drop(columns=existing_columns)
+input_df = pd.get_dummies(input_df).reindex(columns=aligned_columns.columns, fill_value=0)
 
-            st.subheader("Prediction Results")
-            st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
-            st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
-        except Exception as e:
-            st.error(f"Error during prediction: {str(e)}")
+# Scale Input Data
+input_scaled, _ = preprocess_input(input_df, aligned_columns)
+
+# Prediction Button
+if st.button("Predict"):
+    try:
+        prediction = model.predict(input_scaled)
+        prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
+
+        st.subheader("Prediction Results")
+        st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
+        st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
+    except Exception as e:
+        st.error(f"Error during prediction: {str(e)}")
+
 
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
