@@ -100,37 +100,42 @@ elif options == "Visualizations":
         ax.set_ylabel("Category")
         st.pyplot(fig)
 
+# First, let's add a function to get all possible categorical values from the training data
+def get_training_feature_mapping(data):
+    """Create a mapping of all possible categorical values from training data"""
+    feature_mapping = {}
+    categorical_columns = [col for col in data.columns if data[col].dtype == 'object']
+    
+    # Get all unique values for each categorical column
+    for col in categorical_columns:
+        feature_mapping[col] = sorted(data[col].unique().tolist())
+    
+    return feature_mapping
+
 # 3. Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
     
-    # Debug: Display model's input shape
-    st.write("Model Input Shape:", model.input_shape)
+    # Get feature mapping from training data
+    feature_mapping = get_training_feature_mapping(data)
     
     # Separate numerical and categorical columns
     categorical_columns = [col for col in data.columns if data[col].dtype == 'object']
     numerical_columns = [col for col in data.columns if data[col].dtype != 'object' 
                         and col not in ['binary_target', 'unit_sales(in millions)']]
     
-    # Debug: Show column counts
+    # Debug information
+    st.write("Model expects:", model.input_shape[1], "features")
     st.write("Number of numerical columns:", len(numerical_columns))
     st.write("Number of categorical columns:", len(categorical_columns))
-    st.write("Categorical columns:", categorical_columns)
     
-    # Debug: Show unique values in each categorical column
-    st.write("Unique values in each categorical column:")
-    for col in categorical_columns:
-        st.write(f"{col}: {len(data[col].unique())} unique values")
-        st.write(sorted(data[col].unique().tolist()))
-
     # Input Features
     st.subheader("Input Features")
     input_data = {}
     
-    # Handle categorical inputs
+    # Handle categorical inputs using the training data mapping
     for col in categorical_columns:
-        unique_values = sorted(data[col].unique().tolist())
-        input_data[col] = st.selectbox(f"Select {col}", unique_values)
+        input_data[col] = st.selectbox(f"Select {col}", feature_mapping[col])
 
     # Handle numerical inputs
     for col in numerical_columns:
@@ -143,17 +148,31 @@ elif options == "Prediction":
     input_df = pd.DataFrame([input_data])
 
     try:
-        # Debug: Show encoded features
-        training_encoded = pd.get_dummies(data[categorical_columns])
-        st.write("Number of encoded features:", len(training_encoded.columns))
-        st.write("Encoded feature names:", training_encoded.columns.tolist())
+        # Create dummy variables for categorical columns using the complete set of categories
+        processed_categoricals = []
+        for col in categorical_columns:
+            # Get dummies for current column
+            dummies = pd.get_dummies(input_df[col], prefix=col)
+            
+            # Add missing dummy columns that were in training data
+            for cat in feature_mapping[col]:
+                dummy_col = f"{col}_{cat}"
+                if dummy_col not in dummies.columns:
+                    dummies[dummy_col] = 0
+                    
+            # Sort columns to ensure consistent ordering
+            dummies = dummies.reindex(sorted(dummies.columns), axis=1)
+            processed_categoricals.append(dummies)
         
-        # Now encode the input data
-        input_encoded = pd.get_dummies(input_df[categorical_columns])
-        
+        # Combine all categorical features
+        if processed_categoricals:
+            input_encoded = pd.concat(processed_categoricals, axis=1)
+        else:
+            input_encoded = pd.DataFrame()
+
         # Scale numerical columns
-        scaler = StandardScaler()
         if numerical_columns:
+            scaler = StandardScaler()
             scaler.fit(data[numerical_columns])
             scaled_numerical_data = pd.DataFrame(
                 scaler.transform(input_df[numerical_columns]),
@@ -165,10 +184,12 @@ elif options == "Prediction":
         else:
             input_processed = input_encoded
 
-        # Debug: Show final processed features
-        st.write("Final feature count:", input_processed.shape[1])
-        st.write("Final feature names:", input_processed.columns.tolist())
-
+        # Debug: Show feature counts
+        st.write("\nFeature Count Summary:")
+        st.write(f"- Numerical features: {len(numerical_columns)}")
+        st.write(f"- Encoded categorical features: {input_encoded.shape[1]}")
+        st.write(f"- Total features: {input_processed.shape[1]}")
+        
         if input_processed.shape[1] != model.input_shape[1]:
             st.error(f"""
             Feature mismatch! 
@@ -176,10 +197,19 @@ elif options == "Prediction":
             - Model expects {model.input_shape[1]} features
             - Difference: {input_processed.shape[1] - model.input_shape[1]} features
             """)
+            
+            # Show detailed feature information
+            st.write("\nDetailed Feature Information:")
+            for col in categorical_columns:
+                st.write(f"\n{col}:")
+                st.write(f"- Values in training data: {feature_mapping[col]}")
+                st.write(f"- Generated dummy columns: {[c for c in input_processed.columns if c.startswith(col+'_')]}")
+            
             st.stop()
 
     except Exception as e:
         st.error(f"Error during preprocessing: {str(e)}")
+        st.write("Full error:", str(e))
         st.stop()
 
     # Prediction Button
