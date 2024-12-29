@@ -96,18 +96,18 @@ elif options == "Visualizations":
         ax.set_ylabel("Waste (in millions)")
         st.pyplot(fig)
 
-# Prediction Section
+# 3. Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
     st.write("Use this section to predict consumer trends and potential sales using the trained Neural Network model.")
 
-    # Input Features
-    st.subheader("Input Features")
-    input_data = {}
-
     # Separate numerical and categorical columns
     categorical_columns = [col for col in data.columns if data[col].dtype == 'object' and col not in drop_columns]
     numerical_columns = [col for col in data.columns if col not in drop_columns and data[col].dtype != 'object']
+
+    # Input Features
+    st.subheader("Input Features")
+    input_data = {}
 
     # Handle categorical inputs
     for col in categorical_columns:
@@ -116,32 +116,28 @@ elif options == "Prediction":
 
     # Handle numerical inputs
     for col in numerical_columns:
-        input_data[col] = st.slider(f"Select {col}", 
-                                    float(data[col].min()), 
-                                    float(data[col].max()), 
+        input_data[col] = st.slider(f"Select {col}",
+                                    float(data[col].min()),
+                                    float(data[col].max()),
                                     float(data[col].mean()))
 
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
 
-    # Preprocess input
     try:
-        input_scaled = preprocess_input(input_df, model_columns)
-    except Exception as e:
-        st.error(f"Error during preprocessing: {str(e)}")
-        st.stop()
+        # Preprocess the input
+        input_scaled = preprocess_input(input_df, model_columns, data)
 
-    # Prediction Button
-    if st.button("Predict"):
-        try:
+        # Prediction Button
+        if st.button("Predict"):
             prediction = model.predict(input_scaled)
             prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
 
             st.subheader("Prediction Results")
             st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
             st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
-        except Exception as e:
-            st.error(f"Error during prediction: {str(e)}")
+    except Exception as e:
+        st.error(f"Error during prediction: {str(e)}")
 
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
