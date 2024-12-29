@@ -42,26 +42,8 @@ model = load_model_file()
 
 # Extract relevant columns for prediction
 drop_columns = ['binary_target', 'unit_sales(in millions)']
-existing_columns = [col for col in drop_columns if col in data.columns]  # Dynamically check which columns exist
+existing_columns = [col for col in drop_columns if col in data.columns]
 model_columns = data.drop(columns=existing_columns).columns.tolist()
-
-# Data Preprocessing Function
-def preprocess_input(input_df, scaler=None):
-    """
-    Preprocess input data to align with the training dataset structure.
-    - Ensures column consistency with the training dataset.
-    - Scales numeric data.
-    """
-    # Align input with model columns
-    input_df = input_df.reindex(columns=model_columns, fill_value=0)
-    
-    # Scale numeric data
-    if scaler is None:
-        scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(input_df)
-    else:
-        scaled_data = scaler.transform(input_df)
-    return scaled_data
 
 # 1. Home Section
 if options == "Home":
@@ -110,38 +92,67 @@ elif options == "Prediction":
     st.header("Make Predictions")
     st.write("Use this section to predict consumer trends and potential sales using the trained Neural Network model.")
 
+    # Separate numerical and categorical columns
+    categorical_columns = [col for col in data.columns if data[col].dtype == 'object']
+    numerical_columns = [col for col in data.columns if data[col].dtype != 'object' 
+                        and col not in ['binary_target', 'unit_sales(in millions)']]
+
     # Input Features
     st.subheader("Input Features")
     input_data = {}
     
-    # Iterate through model columns for input
-    for col in model_columns:
-        if data[col].dtype == 'object':  # Categorical input
-            unique_values = data[col].unique().tolist()
-            input_data[col] = st.selectbox(f"Select {col}", unique_values)
-        else:  # Numerical input
-            input_data[col] = st.slider(f"Select {col}", 
-                                        float(data[col].min()), 
-                                        float(data[col].max()), 
-                                        float(data[col].mean()))
+    # Handle categorical inputs
+    for col in categorical_columns:
+        unique_values = data[col].unique().tolist()
+        input_data[col] = st.selectbox(f"Select {col}", unique_values)
+
+    # Handle numerical inputs
+    for col in numerical_columns:
+        input_data[col] = st.slider(f"Select {col}", 
+                                  float(data[col].min()), 
+                                  float(data[col].max()), 
+                                  float(data[col].mean()))
 
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
 
     try:
-        # Preprocess the input data
-        input_scaled = preprocess_input(input_df)
+        # Handle categorical columns with one-hot encoding
+        input_encoded = pd.get_dummies(input_df[categorical_columns])
+        input_encoded = input_encoded.reindex(columns=pd.get_dummies(data[categorical_columns]).columns, fill_value=0)
+        
+        # Scale numerical columns
+        scaler = StandardScaler()
+        if numerical_columns:  # Only scale if there are numerical columns
+            scaler.fit(data[numerical_columns])
+            scaled_numerical_data = pd.DataFrame(
+                scaler.transform(input_df[numerical_columns]),
+                columns=numerical_columns
+            )
+            
+            # Combine numerical and categorical data
+            input_processed = pd.concat([scaled_numerical_data, input_encoded], axis=1)
+        else:
+            input_processed = input_encoded
 
-        # Prediction Button
-        if st.button("Predict"):
-            prediction = model.predict(input_scaled)
+        # Ensure columns match model input
+        input_processed = input_processed.reindex(columns=model_columns, fill_value=0)
+
+    except Exception as e:
+        st.error(f"Error during preprocessing: {str(e)}")
+        st.stop()
+
+    # Prediction Button
+    if st.button("Predict"):
+        try:
+            prediction = model.predict(input_processed)
             prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
 
             st.subheader("Prediction Results")
             st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
             st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
-    except Exception as e:
-        st.error(f"Error during prediction: {str(e)}")
-
+        except Exception as e:
+            st.error(f"Error during prediction: {str(e)}")
+            
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
