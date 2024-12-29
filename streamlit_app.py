@@ -37,26 +37,31 @@ def load_model_file():
     model = load_model("my_keras_model.h5")
     return model
 
-# Load Dataset and Model
 data = load_data()
 model = load_model_file()
 
 # Extract relevant columns for prediction
-model_columns = data.drop(columns=['binary_target', 'unit_sales(in millions)']).columns.tolist()
+drop_columns = ['binary_target', 'unit_sales(in millions)']
+existing_columns = [col for col in drop_columns if col in data.columns]  # Dynamically check which columns exist
+model_columns = data.drop(columns=existing_columns).columns.tolist()
 
 # Data Preprocessing Function
-def preprocess_input(input_df):
+def preprocess_input(input_df, scaler=None):
     """
-    Align input data with the model's expected columns and scale numeric features.
+    Preprocess input data to align with the training dataset structure.
+    - Ensures column consistency with the training dataset.
+    - Scales numeric data.
     """
-    # Reindex input data to match model's training columns
+    # Align input with model columns
     input_df = input_df.reindex(columns=model_columns, fill_value=0)
-
-    # Scale the input data
-    scaler = StandardScaler()
-    scaler.fit(data[model_columns])
-    scaled_input = scaler.transform(input_df)
-    return scaled_input
+    
+    # Scale numeric data
+    if scaler is None:
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(input_df)
+    else:
+        scaled_data = scaler.transform(input_df)
+    return scaled_data
 
 # 1. Home Section
 if options == "Home":
@@ -73,22 +78,31 @@ elif options == "Visualizations":
     st.header("Visualizations: Trends and Insights")
     st.write("Here are some key insights based on the data:")
 
-    # Visualization 1: Unit Sales Distribution
-    if 'unit_sales(in millions)' in data.columns:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.histplot(data['unit_sales(in millions)'], kde=True, color="blue", ax=ax)
-        ax.set_title("Distribution of Unit Sales")
-        ax.set_xlabel("Unit Sales (in millions)")
-        ax.set_ylabel("Frequency")
-        st.pyplot(fig)
+    # Example Visualization: Unit Sales Distribution
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(data['unit_sales(in millions)'], kde=True, color="blue", ax=ax)
+    ax.set_title("Distribution of Unit Sales")
+    ax.set_xlabel("Unit Sales (in millions)")
+    ax.set_ylabel("Frequency")
+    st.pyplot(fig)
 
-    # Visualization 2: Waste vs. Unit Sales (if applicable)
-    if 'waste(in millions)' in data.columns and 'unit_sales(in millions)' in data.columns:
+    # Example Visualization: Waste vs. Unit Sales (if applicable)
+    if "waste(in millions)" in data.columns:
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.scatterplot(x=data['unit_sales(in millions)'], y=data['waste(in millions)'], ax=ax, color="orange")
         ax.set_title("Relationship Between Unit Sales and Waste")
         ax.set_xlabel("Unit Sales (in millions)")
         ax.set_ylabel("Waste (in millions)")
+        st.pyplot(fig)
+
+    # Example Visualization: Top Categories (if category data exists)
+    if "category" in data.columns:
+        top_categories = data['category'].value_counts().head(10)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.barplot(x=top_categories.values, y=top_categories.index, ax=ax, palette="viridis")
+        ax.set_title("Top 10 Categories by Frequency")
+        ax.set_xlabel("Count")
+        ax.set_ylabel("Category")
         st.pyplot(fig)
 
 # 3. Prediction Section
@@ -99,13 +113,13 @@ elif options == "Prediction":
     # Input Features
     st.subheader("Input Features")
     input_data = {}
-
-    # Display only relevant columns for prediction
+    
+    # Iterate through model columns for input
     for col in model_columns:
-        if data[col].dtype == 'object':  # Handle categorical columns
+        if data[col].dtype == 'object':  # Categorical input
             unique_values = data[col].unique().tolist()
             input_data[col] = st.selectbox(f"Select {col}", unique_values)
-        else:  # Handle numerical columns
+        else:  # Numerical input
             input_data[col] = st.slider(f"Select {col}", 
                                         float(data[col].min()), 
                                         float(data[col].max()), 
@@ -126,7 +140,6 @@ elif options == "Prediction":
             st.subheader("Prediction Results")
             st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
             st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
-
     except Exception as e:
         st.error(f"Error during prediction: {str(e)}")
 
