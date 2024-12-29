@@ -40,12 +40,11 @@ def load_model_file():
 data = load_data()
 model = load_model_file()
 
-# Extract relevant columns for prediction
+# Get columns used in the model
 drop_columns = ['binary_target', 'unit_sales(in millions)']
-existing_columns = [col for col in drop_columns if col in data.columns]
-model_columns = data.drop(columns=existing_columns).columns.tolist()
+model_columns = data.drop(columns=[col for col in drop_columns if col in data.columns]).columns.tolist()
 
-# 1. Home Section
+# Home Section
 if options == "Home":
     st.header("Overview")
     st.write("""
@@ -55,7 +54,7 @@ if options == "Home":
     st.write("Here’s a preview of the dataset:")
     st.dataframe(data.head(10))
 
-# 2. Visualizations Section
+# Visualization Section
 elif options == "Visualizations":
     st.header("Visualizations: Trends and Insights")
     st.write("Here are some key insights based on the data:")
@@ -68,7 +67,7 @@ elif options == "Visualizations":
     ax.set_ylabel("Frequency")
     st.pyplot(fig)
 
-    # Example Visualization: Waste vs. Unit Sales (if applicable)
+    # Waste vs. Unit Sales
     if "waste(in millions)" in data.columns:
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.scatterplot(x=data['unit_sales(in millions)'], y=data['waste(in millions)'], ax=ax, color="orange")
@@ -77,30 +76,19 @@ elif options == "Visualizations":
         ax.set_ylabel("Waste (in millions)")
         st.pyplot(fig)
 
-    # Example Visualization: Top Categories (if category data exists)
-    if "category" in data.columns:
-        top_categories = data['category'].value_counts().head(10)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.barplot(x=top_categories.values, y=top_categories.index, ax=ax, palette="viridis")
-        ax.set_title("Top 10 Categories by Frequency")
-        ax.set_xlabel("Count")
-        ax.set_ylabel("Category")
-        st.pyplot(fig)
-
-# 3. Prediction Section
+# Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
     st.write("Use this section to predict consumer trends and potential sales using the trained Neural Network model.")
 
     # Separate numerical and categorical columns
-    categorical_columns = [col for col in data.columns if data[col].dtype == 'object']
-    numerical_columns = [col for col in data.columns if data[col].dtype != 'object' 
-                        and col not in ['binary_target', 'unit_sales(in millions)']]
+    categorical_columns = [col for col in data.columns if data[col].dtype == 'object' and col not in drop_columns]
+    numerical_columns = [col for col in data.columns if col not in drop_columns and data[col].dtype != 'object']
 
     # Input Features
     st.subheader("Input Features")
     input_data = {}
-    
+
     # Handle categorical inputs
     for col in categorical_columns:
         unique_values = data[col].unique().tolist()
@@ -109,33 +97,25 @@ elif options == "Prediction":
     # Handle numerical inputs
     for col in numerical_columns:
         input_data[col] = st.slider(f"Select {col}", 
-                                  float(data[col].min()), 
-                                  float(data[col].max()), 
-                                  float(data[col].mean()))
+                                    float(data[col].min()), 
+                                    float(data[col].max()), 
+                                    float(data[col].mean()))
 
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
 
     try:
-        # Handle categorical columns with one-hot encoding
-        input_encoded = pd.get_dummies(input_df[categorical_columns])
-        input_encoded = input_encoded.reindex(columns=pd.get_dummies(data[categorical_columns]).columns, fill_value=0)
-        
-        # Scale numerical columns
-        scaler = StandardScaler()
-        if numerical_columns:  # Only scale if there are numerical columns
-            scaler.fit(data[numerical_columns])
-            scaled_numerical_data = pd.DataFrame(
-                scaler.transform(input_df[numerical_columns]),
-                columns=numerical_columns
-            )
-            
-            # Combine numerical and categorical data
-            input_processed = pd.concat([scaled_numerical_data, input_encoded], axis=1)
-        else:
-            input_processed = input_encoded
+        # One-hot encode categorical variables
+        encoded_categorical_data = pd.get_dummies(input_df[categorical_columns])
+        encoded_categorical_data = encoded_categorical_data.reindex(columns=pd.get_dummies(data[categorical_columns]).columns, fill_value=0)
 
-        # Ensure columns match model input
+        # Scale numerical variables
+        scaler = StandardScaler()
+        scaler.fit(data[numerical_columns])
+        scaled_numerical_data = pd.DataFrame(scaler.transform(input_df[numerical_columns]), columns=numerical_columns)
+
+        # Combine numerical and categorical data
+        input_processed = pd.concat([scaled_numerical_data, encoded_categorical_data], axis=1)
         input_processed = input_processed.reindex(columns=model_columns, fill_value=0)
 
     except Exception as e:
@@ -153,6 +133,6 @@ elif options == "Prediction":
             st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
         except Exception as e:
             st.error(f"Error during prediction: {str(e)}")
-            
+
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
