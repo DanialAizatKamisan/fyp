@@ -40,9 +40,29 @@ def load_model_file():
 data = load_data()
 model = load_model_file()
 
-# Get columns used in the model
+# Identify model columns
 drop_columns = ['binary_target', 'unit_sales(in millions)']
 model_columns = data.drop(columns=[col for col in drop_columns if col in data.columns]).columns.tolist()
+
+# Data Preprocessing Function
+def preprocess_input(input_df, model_columns):
+    """
+    Preprocess input data to match the model's training features.
+    - Align columns with the training dataset (one-hot encoded).
+    - Scale numerical data.
+    """
+    # One-hot encode categorical columns in the input
+    input_df = pd.get_dummies(input_df)
+    
+    # Align input DataFrame with the model columns
+    input_df = input_df.reindex(columns=model_columns, fill_value=0)
+
+    # Scale numeric data
+    scaler = StandardScaler()
+    scaler.fit(data[model_columns])  # Fit on training data columns
+    input_scaled = scaler.transform(input_df)
+
+    return input_scaled
 
 # Home Section
 if options == "Home":
@@ -81,13 +101,13 @@ elif options == "Prediction":
     st.header("Make Predictions")
     st.write("Use this section to predict consumer trends and potential sales using the trained Neural Network model.")
 
-    # Separate numerical and categorical columns
-    categorical_columns = [col for col in data.columns if data[col].dtype == 'object' and col not in drop_columns]
-    numerical_columns = [col for col in data.columns if col not in drop_columns and data[col].dtype != 'object']
-
     # Input Features
     st.subheader("Input Features")
     input_data = {}
+
+    # Separate numerical and categorical columns
+    categorical_columns = [col for col in data.columns if data[col].dtype == 'object' and col not in drop_columns]
+    numerical_columns = [col for col in data.columns if col not in drop_columns and data[col].dtype != 'object']
 
     # Handle categorical inputs
     for col in categorical_columns:
@@ -104,20 +124,9 @@ elif options == "Prediction":
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
 
+    # Preprocess input
     try:
-        # One-hot encode categorical variables
-        encoded_categorical_data = pd.get_dummies(input_df[categorical_columns])
-        encoded_categorical_data = encoded_categorical_data.reindex(columns=pd.get_dummies(data[categorical_columns]).columns, fill_value=0)
-
-        # Scale numerical variables
-        scaler = StandardScaler()
-        scaler.fit(data[numerical_columns])
-        scaled_numerical_data = pd.DataFrame(scaler.transform(input_df[numerical_columns]), columns=numerical_columns)
-
-        # Combine numerical and categorical data
-        input_processed = pd.concat([scaled_numerical_data, encoded_categorical_data], axis=1)
-        input_processed = input_processed.reindex(columns=model_columns, fill_value=0)
-
+        input_scaled = preprocess_input(input_df, model_columns)
     except Exception as e:
         st.error(f"Error during preprocessing: {str(e)}")
         st.stop()
@@ -125,7 +134,7 @@ elif options == "Prediction":
     # Prediction Button
     if st.button("Predict"):
         try:
-            prediction = model.predict(input_processed)
+            prediction = model.predict(input_scaled)
             prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
 
             st.subheader("Prediction Results")
