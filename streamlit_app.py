@@ -148,37 +148,48 @@ elif options == "Prediction":
         st.subheader("Input Features")
         input_data = {}
 
-        # Add sliders for numerical inputs with rounded values
+        # Add sliders for numerical inputs with user-friendly values
         for col in numerical_features:
             if col in data.columns:
-                min_val = round(float(data[col].min()), 1)
-                max_val = round(float(data[col].max()), 1)
-                mean_val = round(float(data[col].mean()), 1)
+                if 'in millions' in col:
+                    min_val = int(data[col].min() * 1000)  # Convert millions to thousands
+                    max_val = int(data[col].max() * 1000)
+                    mean_val = int(data[col].mean() * 1000)
+                    step = 100  # Step by hundreds
+                else:
+                    min_val = int(data[col].min())
+                    max_val = int(data[col].max())
+                    mean_val = int(data[col].mean())
+                    step = 10  # Step by tens
 
-                # Ensure slider values are user-friendly
+                # Add slider
                 input_data[col] = st.slider(
-                    f"Select {col}",
+                    f"Select {col.replace('(in millions)', '(in thousands)')}",
                     min_value=min_val,
                     max_value=max_val,
                     value=mean_val,
-                    step=0.1,  # Step for finer control
-                    format="%.1f"  # Display one decimal place
+                    step=step,
+                    key=f"slider_{col}"  # Unique key for each slider
                 )
 
         # Prediction Button
-        if st.button("Predict"):
+        if st.button("Predict", key="predict_button"):
             # Convert input to DataFrame
             input_df = pd.DataFrame([input_data])
 
-            # Scale numerical features
+            # Transform slider values back to original scale for prediction
+            for col in ['store_sales(in millions)', 'store_cost(in millions)']:
+                if col in input_df.columns:
+                    input_df[col] = input_df[col] / 1000  # Convert thousands back to millions
+
+            # Preprocess input
+            numerical_columns = [col for col in numerical_features if col in data.columns]
             scaler = StandardScaler()
-            scaler.fit(data[numerical_features])
-            input_scaled = scaler.transform(input_df)
+            scaler.fit(data[numerical_columns])
+            input_processed = scaler.transform(input_df)
 
-            # Convert to DataFrame with correct feature names
-            input_processed = pd.DataFrame(input_scaled, columns=numerical_features)
-
-            # Ensure input matches the model's expected shape
+            # Ensure input matches model's expected shape
+            input_processed = pd.DataFrame(input_processed, columns=numerical_columns)
             expected_shape = 298
             current_shape = input_processed.shape[1]
 
@@ -187,9 +198,6 @@ elif options == "Prediction":
                     col_name = f"dummy_feature_{i}"
                     input_processed[col_name] = 0.0
 
-            # Reorder columns to match model input order (if necessary)
-            input_processed = input_processed.iloc[:, :expected_shape]
-
             # Debug information
             st.write("Debug - Input shape before prediction:", input_processed.shape)
 
@@ -197,8 +205,6 @@ elif options == "Prediction":
                 # Perform prediction
                 prediction = model.predict(input_processed)
                 prediction_value = prediction[0][0]
-
-                # Interpret prediction
                 prediction_class = "High Demand" if prediction_value > 0.5 else "Low Demand"
 
                 # Display results
@@ -221,7 +227,10 @@ elif options == "Prediction":
                 # Display input values used
                 st.subheader("Input Values Used")
                 for key, value in input_data.items():
-                    st.write(f"{key}: {value:.1f}")
+                    if 'in millions' in key:
+                        st.write(f"{key.replace('(in millions)', '(in thousands)')}: {value:,} (in thousands)")
+                    else:
+                        st.write(f"{key}: {value:,}")
             except Exception as e:
                 st.error(f"Prediction error: {str(e)}")
 
