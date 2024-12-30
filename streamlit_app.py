@@ -148,7 +148,7 @@ elif options == "Prediction":
         st.subheader("Input Features")
         input_data = {}
 
-        # Add sliders for numerical inputs starting from zero
+        # Add sliders for numerical inputs
         for col in numerical_features:
             if col in data.columns:
                 if 'in millions' in col:
@@ -174,6 +174,9 @@ elif options == "Prediction":
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
+            # Reload the model for each prediction
+            model = load_model_file()
+
             # Convert input to DataFrame
             input_df = pd.DataFrame([input_data])
 
@@ -185,7 +188,7 @@ elif options == "Prediction":
             # Debugging: Log the raw input data
             st.write("Debug - Raw Input Data:", input_df)
 
-            # Ensure consistent StandardScaler behavior
+            # Preprocess input
             numerical_columns = [col for col in numerical_features if col in data.columns]
             scaler = StandardScaler()
             scaler.fit(data[numerical_columns])  # Fit the scaler on the original dataset
