@@ -182,14 +182,22 @@ elif options == "Prediction":
                 if col in input_df.columns:
                     input_df[col] = input_df[col] / 1000  # Convert thousands back to millions
 
+            # Debugging: Log the raw input data
+            st.write("Debug - Raw Input Data:", input_df)
+
             # Preprocess input
             numerical_columns = [col for col in numerical_features if col in data.columns]
             scaler = StandardScaler()
-            scaler.fit(data[numerical_columns])
+            scaler.fit(data[numerical_columns])  # Fit the scaler on the original data
             input_processed = scaler.transform(input_df)
 
-            # Ensure input matches model's expected shape
+            # Convert scaled data to DataFrame
             input_processed = pd.DataFrame(input_processed, columns=numerical_columns)
+
+            # Debugging: Log the scaled input data
+            st.write("Debug - Scaled Input Data:", input_processed)
+
+            # Ensure input matches model's expected shape
             expected_shape = 298
             current_shape = input_processed.shape[1]
 
@@ -198,11 +206,11 @@ elif options == "Prediction":
                     col_name = f"dummy_feature_{i}"
                     input_processed[col_name] = 0.0
 
-            # Debug information
-            st.write("Debug - Input shape before prediction:", input_processed.shape)
+            # Debugging: Log the final input shape
+            st.write("Debug - Final Input Shape:", input_processed.shape)
 
             try:
-                # Perform prediction
+                # Make prediction
                 prediction = model.predict(input_processed)
                 prediction_value = prediction[0][0]
                 prediction_class = "High Demand" if prediction_value > 0.5 else "Low Demand"
@@ -224,18 +232,12 @@ elif options == "Prediction":
                         "The prediction indicates **low demand**. Reduce inventory to minimize waste, and consider offering promotions to boost sales."
                     )
 
-                # Display input values used
-                st.subheader("Input Values Used")
-                for key, value in input_data.items():
-                    if 'in millions' in key:
-                        st.write(f"{key.replace('(in millions)', '(in thousands)')}: {value:,} (in thousands)")
-                    else:
-                        st.write(f"{key}: {value:,}")
             except Exception as e:
                 st.error(f"Prediction error: {str(e)}")
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 # Footer
 st.write("-----")
