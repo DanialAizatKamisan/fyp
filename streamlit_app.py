@@ -185,8 +185,8 @@ elif options == "Prediction":
                 if col in input_df.columns:
                     input_df[col] = input_df[col] / 1000  # Convert thousands back to millions
 
-            # Debugging: Log the raw input data
-            st.write("Debug - Raw Input Data:", input_df)
+            # Debugging: Log the raw input data (Remove these lines to hide debug info)
+            # st.write("Debug - Raw Input Data:", input_df)
 
             # Preprocess input
             numerical_columns = [col for col in numerical_features if col in data.columns]
@@ -197,6 +197,9 @@ elif options == "Prediction":
             input_scaled = scaler.transform(input_df)
             input_processed = pd.DataFrame(input_scaled, columns=numerical_columns)
 
+            # Debugging: Log the scaled input data (Remove these lines to hide debug info)
+            # st.write("Debug - Scaled Input Data:", input_processed)
+
             # Ensure input matches model's expected shape
             expected_shape = model.input_shape[1]
             current_shape = input_processed.shape[1]
@@ -205,12 +208,6 @@ elif options == "Prediction":
                 for i in range(current_shape, expected_shape):
                     col_name = f"dummy_feature_{i}"
                     input_processed[col_name] = 0.0
-
-            # Debugging: Log the scaled input data
-            st.write("Debug - Scaled Input Data:", input_processed)
-
-            # Debugging: Log the final input shape
-            st.write("Debug - Final Input Shape:", input_processed.shape)
 
             try:
                 # Make prediction
