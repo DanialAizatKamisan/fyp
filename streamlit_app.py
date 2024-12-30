@@ -141,27 +141,28 @@ elif options == "Prediction":
     st.write("Use this section to predict consumer trends using the trained model.")
 
     try:
-        # Define numerical features (removed "grocery_sqft")
+        # Define numerical features
         numerical_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
 
         # Create input form for numerical features
         st.subheader("Input Features")
         input_data = {}
 
-        # Add sliders for numerical inputs
+        # Add sliders for numerical inputs with rounded values
         for col in numerical_features:
             if col in data.columns:
-                min_val = float(data[col].min())
-                max_val = float(data[col].max())
-                mean_val = float(data[col].mean())
+                min_val = round(float(data[col].min()), 1)
+                max_val = round(float(data[col].max()), 1)
+                mean_val = round(float(data[col].mean()), 1)
 
-                # Ensure slider values are valid
+                # Ensure slider values are user-friendly
                 input_data[col] = st.slider(
                     f"Select {col}",
                     min_value=min_val,
                     max_value=max_val,
                     value=mean_val,
-                    format="%.2f"
+                    step=0.1,  # Step for finer control
+                    format="%.1f"  # Display one decimal place
                 )
 
         # Prediction Button
@@ -220,7 +221,7 @@ elif options == "Prediction":
                 # Display input values used
                 st.subheader("Input Values Used")
                 for key, value in input_data.items():
-                    st.write(f"{key}: {value:.2f}")
+                    st.write(f"{key}: {value:.1f}")
             except Exception as e:
                 st.error(f"Prediction error: {str(e)}")
 
