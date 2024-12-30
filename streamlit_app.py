@@ -141,8 +141,8 @@ elif options == "Prediction":
     st.write("Use this section to predict consumer trends using the trained model.")
 
     try:
-        # Define numerical features with corrected column names
-        numerical_features = ['grocery_sqft', 'meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
+        # Define numerical features (removed "grocery_sqft")
+        numerical_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
 
         # Create input form for numerical features
         st.subheader("Input Features")
