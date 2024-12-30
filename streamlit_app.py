@@ -37,32 +37,54 @@ def load_model_file():
     model = load_model("my_keras_model.h5")
     return model
 
-data = load_data()
-model = load_model_file()
+# Load data and model
+try:
+    data = load_data()
+    model = load_model_file()
+    
+    # Debug information
+    st.sidebar.write("Debug Info:")
+    st.sidebar.write("Data shape:", data.shape)
+    st.sidebar.write("Model input shape:", model.input_shape)
+except Exception as e:
+    st.error(f"Error loading data or model: {str(e)}")
+    st.stop()
 
-# Identify model columns
-drop_columns = ['binary_target', 'unit_sales(in millions)']
-model_columns = data.drop(columns=[col for col in drop_columns if col in data.columns]).columns.tolist()
-
-# Update this preprocesssing function
-def preprocess_input(input_df, model_columns, training_data):
+# Data Preprocessing Function
+def preprocess_input(input_df, original_data):
     """
     Preprocess input data to match the model's training features.
-    - Align columns with the training dataset (one-hot encoded).
-    - Scale numerical data.
     """
-    # One-hot encode categorical columns in the input
-    input_df = pd.get_dummies(input_df)
+    # Get columns to process (exclude target variables)
+    drop_columns = ['binary_target', 'unit_sales(in millions)']
+    feature_columns = [col for col in original_data.columns if col not in drop_columns]
     
-    # Align input DataFrame with the model columns
-    input_df = input_df.reindex(columns=model_columns, fill_value=0)
-
-    # Scale numeric data
-    scaler = StandardScaler()
-    scaler.fit(training_data[model_columns])  # Fit on training data columns
-    input_scaled = scaler.transform(input_df)
-
-    return input_scaled
+    # Create a copy of input data with only feature columns
+    processed_df = input_df[feature_columns].copy()
+    
+    # One-hot encode categorical columns
+    categorical_columns = processed_df.select_dtypes(include=['object']).columns
+    if not categorical_columns.empty:
+        # Get dummy variables for both input and original data
+        processed_df = pd.get_dummies(processed_df, columns=categorical_columns)
+        original_dummies = pd.get_dummies(original_data[categorical_columns])
+        
+        # Ensure all columns from original data are present
+        for col in original_dummies.columns:
+            if col not in processed_df.columns:
+                processed_df[col] = 0
+        
+        # Keep only the columns that were in the original data
+        processed_df = processed_df[original_dummies.columns]
+    
+    # Scale numerical features
+    numerical_columns = [col for col in feature_columns if col not in categorical_columns]
+    if numerical_columns:
+        scaler = StandardScaler()
+        scaler.fit(original_data[numerical_columns])
+        processed_df[numerical_columns] = scaler.transform(processed_df[numerical_columns])
+    
+    return processed_df
 
 # Home Section
 if options == "Home":
@@ -71,78 +93,105 @@ if options == "Home":
     This dashboard helps restaurant managers make data-driven decisions by analyzing consumer trends and predicting future outcomes. 
     Use the navigation menu to explore visualizations or make predictions with our trained Neural Network model.
     """)
-    st.write("Here’s a preview of the dataset:")
+    st.write("Here's a preview of the dataset:")
     st.dataframe(data.head(10))
+    
+    # Display column information
+    st.write("\nColumn Information:")
+    for col in data.columns:
+        st.write(f"- {col}: {data[col].dtype}")
 
 # Visualization Section
 elif options == "Visualizations":
     st.header("Visualizations: Trends and Insights")
-    st.write("Here are some key insights based on the data:")
-
-    # Example Visualization: Unit Sales Distribution
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.histplot(data['unit_sales(in millions)'], kde=True, color="blue", ax=ax)
-    ax.set_title("Distribution of Unit Sales")
-    ax.set_xlabel("Unit Sales (in millions)")
-    ax.set_ylabel("Frequency")
-    st.pyplot(fig)
-
-    # Waste vs. Unit Sales
-    if "waste(in millions)" in data.columns:
+    
+    # Sales Distribution
+    if 'unit_sales(in millions)' in data.columns:
+        st.subheader("Unit Sales Distribution")
         fig, ax = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(x=data['unit_sales(in millions)'], y=data['waste(in millions)'], ax=ax, color="orange")
-        ax.set_title("Relationship Between Unit Sales and Waste")
+        sns.histplot(data['unit_sales(in millions)'], kde=True, color="blue", ax=ax)
+        ax.set_title("Distribution of Unit Sales")
         ax.set_xlabel("Unit Sales (in millions)")
-        ax.set_ylabel("Waste (in millions)")
+        ax.set_ylabel("Frequency")
         st.pyplot(fig)
 
-# 3. Prediction Section
+    # Waste vs Sales Relationship
+    if all(col in data.columns for col in ['unit_sales(in millions)', 'waste(in millions)']):
+        st.subheader("Sales vs Waste Analysis")
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.scatterplot(data=data, x='unit_sales(in millions)', y='waste(in millions)', ax=ax)
+        ax.set_title("Relationship Between Unit Sales and Waste")
+        st.pyplot(fig)
+
+    # Categorical Analysis
+    categorical_columns = data.select_dtypes(include=['object']).columns
+    if not categorical_columns.empty:
+        st.subheader("Categorical Data Analysis")
+        selected_cat = st.selectbox("Select Category to Analyze:", categorical_columns)
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        data[selected_cat].value_counts().plot(kind='bar', ax=ax)
+        plt.xticks(rotation=45)
+        plt.title(f"Distribution of {selected_cat}")
+        st.pyplot(fig)
+
+# Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
     st.write("Use this section to predict consumer trends and potential sales using the trained Neural Network model.")
 
-    # Separate numerical and categorical columns
-    categorical_columns = [col for col in data.columns if data[col].dtype == 'object' and col not in drop_columns]
-    numerical_columns = [col for col in data.columns if col not in drop_columns and data[col].dtype != 'object']
+    try:
+        # Separate numerical and categorical columns
+        categorical_columns = data.select_dtypes(include=['object']).columns
+        numerical_columns = [col for col in data.columns 
+                           if col not in categorical_columns 
+                           and col not in ['binary_target', 'unit_sales(in millions)']]
 
-    # Input Features
-    st.subheader("Input Features")
-    input_data = {}
+        # Input Features
+        st.subheader("Input Features")
+        input_data = {}
 
-    # Handle categorical inputs
-    for col in categorical_columns:
-        unique_values = data[col].unique().tolist()
-        input_data[col] = st.selectbox(f"Select {col}", unique_values)
+        # Categorical inputs
+        for col in categorical_columns:
+            unique_values = sorted(data[col].unique().tolist())
+            input_data[col] = st.selectbox(f"Select {col}", unique_values)
 
-    # Handle numerical inputs
-    for col in numerical_columns:
-        input_data[col] = st.slider(f"Select {col}",
-                                    float(data[col].min()),
-                                    float(data[col].max()),
-                                    float(data[col].mean()))
+        # Numerical inputs
+        for col in numerical_columns:
+            input_data[col] = st.slider(
+                f"Select {col}",
+                float(data[col].min()),
+                float(data[col].max()),
+                float(data[col].mean())
+            )
 
-    # Convert input data to DataFrame
-    input_df = pd.DataFrame([input_data])
-
-     try:
-        # Preprocess the input
-        input_scaled = preprocess_input(input_df, model_columns, data)
+        # Convert to DataFrame
+        input_df = pd.DataFrame([input_data])
 
         # Prediction Button
         if st.button("Predict"):
-            prediction = model.predict(input_scaled)
-            prediction_class = (prediction > 0.5).astype(int)  # Binary classification threshold
+            # Preprocess input
+            processed_input = preprocess_input(input_df, data)
+            
+            # Debug information
+            st.write("Debug Info:")
+            st.write("Processed input shape:", processed_input.shape)
+            st.write("Model input shape:", model.input_shape)
+            
+            # Make prediction
+            prediction = model.predict(processed_input)
+            prediction_class = (prediction > 0.5).astype(int)
 
+            # Display results
             st.subheader("Prediction Results")
             st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
             st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
+
     except Exception as e:
-        st.error(f"Error during prediction: {str(e)}")
-        # Add more detailed error information
-        st.write("Debug information:")
-        st.write("Input shape:", input_df.shape)
-        st.write("Model expected shape:", model.input_shape)
+        st.error("Error in prediction section:")
+        st.error(str(e))
+        st.write("Please check your data and model compatibility.")
 
-
+# Footer
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
