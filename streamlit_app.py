@@ -175,7 +175,7 @@ elif options == "Prediction":
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
-            # Load the model each time to reset its state
+            # Reload the model each time to avoid state caching
             model = load_model("my_keras_model.h5")
 
             # Prepare Input Data
@@ -196,12 +196,22 @@ elif options == "Prediction":
             expected_shape = model.input_shape[1]
             if input_processed.shape[1] < expected_shape:
                 for i in range(input_processed.shape[1], expected_shape):
-                    input_processed[f"dummy_feature_{i}"] = 0.0
+                    col_name = f"dummy_feature_{i}"
+                    input_processed[col_name] = 0.0
 
             try:
                 # Make Prediction
                 prediction = model.predict(input_processed)
                 prediction_value = float(prediction[0][0])  # Ensure confidence is a float
+
+                # Adjust extreme prediction values
+                epsilon = 0.01  # Small value to avoid extremes
+                if prediction_value < epsilon:
+                    prediction_value = epsilon
+                elif prediction_value > 1 - epsilon:
+                    prediction_value = 1 - epsilon
+
+                # Determine prediction class
                 prediction_class = "High Demand" if prediction_value > 0.5 else "Low Demand"
 
                 # Display Results
