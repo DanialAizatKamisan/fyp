@@ -44,8 +44,8 @@ model = load_model_file()
 drop_columns = ['binary_target', 'unit_sales(in millions)']
 model_columns = data.drop(columns=[col for col in drop_columns if col in data.columns]).columns.tolist()
 
-# Data Preprocessing Function
-def preprocess_input(input_df, model_columns):
+# Update this preprocesssing function
+def preprocess_input(input_df, model_columns, training_data):
     """
     Preprocess input data to match the model's training features.
     - Align columns with the training dataset (one-hot encoded).
@@ -59,7 +59,7 @@ def preprocess_input(input_df, model_columns):
 
     # Scale numeric data
     scaler = StandardScaler()
-    scaler.fit(data[model_columns])  # Fit on training data columns
+    scaler.fit(training_data[model_columns])  # Fit on training data columns
     input_scaled = scaler.transform(input_df)
 
     return input_scaled
@@ -124,7 +124,7 @@ elif options == "Prediction":
     # Convert input data to DataFrame
     input_df = pd.DataFrame([input_data])
 
-    try:
+     try:
         # Preprocess the input
         input_scaled = preprocess_input(input_df, model_columns, data)
 
@@ -138,6 +138,11 @@ elif options == "Prediction":
             st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
     except Exception as e:
         st.error(f"Error during prediction: {str(e)}")
+        # Add more detailed error information
+        st.write("Debug information:")
+        st.write("Input shape:", input_df.shape)
+        st.write("Model expected shape:", model.input_shape)
+
 
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
