@@ -144,13 +144,13 @@ elif options == "Prediction":
         # Define only essential numerical features
         numerical_features = ['grocery_sqft', 'meat_sqft']
 
-        # Ensure columns exist in the dataset or add dummy columns with sensible values
-        for col in ['store_sales', 'store_cost']:
+        # Ensure columns exist in the dataset or add default columns with fixed ranges
+        for col, default_value in {'store_sales': 3000.0, 'store_cost': 3000.0}.items():
             if col not in data.columns:
-                data[col] = np.random.uniform(1000, 5000, size=len(data))  # Add random dummy values
-                st.warning(f"Column '{col}' not found in dataset. Using default random values.")
-
-        # Append dummy features to the numerical features list if needed
+                data[col] = default_value  # Add fixed default value
+                st.warning(f"Column '{col}' not found in dataset. Using default value of {default_value}.")
+        
+        # Append the additional features
         numerical_features.extend(['store_sales', 'store_cost'])
 
         # Create input form for numerical features
@@ -160,21 +160,18 @@ elif options == "Prediction":
         # Add sliders for numerical inputs
         for col in numerical_features:
             if col in data.columns:
-                min_val = float(data[col].min())
-                max_val = float(data[col].max())
-                mean_val = float(data[col].mean())
+                min_val = float(data[col].min()) if col in ['grocery_sqft', 'meat_sqft'] else 1000.0
+                max_val = float(data[col].max()) if col in ['grocery_sqft', 'meat_sqft'] else 5000.0
+                mean_val = float(data[col].mean()) if col in ['grocery_sqft', 'meat_sqft'] else default_value
 
                 # Ensure slider values are valid
-                if min_val < max_val:
-                    input_data[col] = st.slider(
-                        f"Select {col}",
-                        min_value=min_val,
-                        max_value=max_val,
-                        value=mean_val,
-                        format="%.2f"
-                    )
-                else:
-                    st.error(f"Invalid range for {col}. Please check the dataset.")
+                input_data[col] = st.slider(
+                    f"Select {col}",
+                    min_value=min_val,
+                    max_value=max_val,
+                    value=mean_val,
+                    format="%.2f"
+                )
 
         # Prediction Button
         if st.button("Predict"):
@@ -238,8 +235,6 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
-
 
 # Footer
 st.write("-----")
