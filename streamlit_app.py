@@ -142,7 +142,16 @@ elif options == "Prediction":
 
     try:
         # Define only essential numerical features
-        numerical_features = ['grocery_sqft', 'meat_sqft', 'store_sales', 'store_cost']
+        numerical_features = ['grocery_sqft', 'meat_sqft']
+
+        # Ensure columns exist in the dataset or add dummy columns
+        for col in ['store_sales', 'store_cost']:
+            if col not in data.columns:
+                data[col] = 0.0  # Add dummy columns if missing
+                st.warning(f"Column '{col}' not found in dataset. Using default value of 0.0.")
+
+        # Append dummy features to the numerical features list if needed
+        numerical_features.extend(['store_sales', 'store_cost'])
 
         # Create input form for numerical features
         st.subheader("Input Features")
@@ -210,6 +219,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 # Footer
 st.write("-----")
