@@ -148,19 +148,19 @@ elif options == "Prediction":
         st.subheader("Input Features")
         input_data = {}
 
-        # Add sliders for numerical inputs starting from zero
+        # Add sliders for numerical inputs with step size of 1
         for col in numerical_features:
             if col in data.columns:
                 if 'in millions' in col:
                     min_val = 0  # Start slider from zero
                     max_val = int(data[col].max() * 1000)  # Convert millions to thousands
                     mean_val = int(data[col].mean() * 1000)
-                    step = 100  # Step by hundreds
+                    step = 1  # Step by 1 for precise control
                 else:
                     min_val = 0  # Start slider from zero
                     max_val = int(data[col].max())
                     mean_val = int(data[col].mean())
-                    step = 10  # Step by tens
+                    step = 1  # Step by 1 for precise control
 
                 # Add slider
                 input_data[col] = st.slider(
@@ -218,7 +218,7 @@ elif options == "Prediction":
                 # Display results
                 st.subheader("Prediction Results")
                 st.write(f"Predicted Class: **{prediction_class}**")
-                st.write(f"Prediction Confidence: **{prediction_value:.2f}**")
+                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # More precise confidence score
 
                 # Actionable Insights
                 st.subheader("Actionable Insights")
