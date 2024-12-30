@@ -138,36 +138,20 @@ elif options == "Visualizations":
 # Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
-    st.write("Use this section to predict consumer trends and potential sales using the trained Neural Network model.")
+    st.write("Use this section to predict consumer trends using the trained model.")
 
     try:
-        # Get all feature columns from the data
-        # Exclude the target variables
-        feature_columns = data.columns.tolist()
-        target_columns = ['binary_target', 'unit_sales(in millions)']
-        feature_columns = [col for col in feature_columns if col not in target_columns]
-
-        # Create input form
+        # Define only essential numerical features
+        numerical_features = [
+            'grocery_sqft',
+            'meat_sqft'
+        ]
+        
+        # Create input form for numerical features only
         st.subheader("Input Features")
         input_data = {}
-
-        # Categorical features first
-        categorical_features = [
-            'food_category', 'food_department', 'food_family',
-            'promotion_name', 'sales_country', 'marital_status', 'gender'
-        ]
         
-        for col in categorical_features:
-            if col in data.columns:
-                unique_values = sorted(data[col].unique().tolist())
-                input_data[col] = st.selectbox(f"Select {col}", unique_values)
-
-        # Numerical features
-        numerical_features = [
-            'store_sales(in millions)', 'store_cost(in millions)',
-            'grocery_sqft', 'meat_sqft'
-        ]
-        
+        # Add numerical inputs
         for col in numerical_features:
             if col in data.columns:
                 min_val = float(data[col].min())
@@ -187,33 +171,32 @@ elif options == "Prediction":
             # Convert input to DataFrame
             input_df = pd.DataFrame([input_data])
             
-            # Preprocess the input data
-            # Get dummy variables for categorical features
-            input_processed = pd.get_dummies(input_df)
-            
-            # Ensure all columns from training match
-            training_columns = pd.get_dummies(data[feature_columns]).columns
-            
-            # Add missing columns with zeros
-            for col in training_columns:
-                if col not in input_processed.columns:
-                    input_processed[col] = 0
-                    
-            # Reorder columns to match training data
-            input_processed = input_processed[training_columns]
-            
-            # Scale numerical features
+            # Scale the numerical features
             scaler = StandardScaler()
-            numerical_cols = [col for col in numerical_features if col in input_processed.columns]
-            if numerical_cols:
-                scaler.fit(data[numerical_cols])
-                input_processed[numerical_cols] = scaler.transform(input_processed[numerical_cols])
-
-            # Verify shape matches model input
-            st.write("Debug - Input shape:", input_processed.shape)
+            scaler.fit(data[numerical_features])
+            input_scaled = scaler.transform(input_df)
             
-            # Make prediction
+            # Convert to DataFrame with column names
+            input_processed = pd.DataFrame(
+                input_scaled, 
+                columns=numerical_features
+            )
+            
+            # Add missing columns to match model's expected shape
+            expected_shape = 298
+            current_shape = input_processed.shape[1]
+            
+            if current_shape < expected_shape:
+                # Add dummy columns to match expected shape
+                for i in range(current_shape, expected_shape):
+                    col_name = f"dummy_feature_{i}"
+                    input_processed[col_name] = 0.0
+            
+            # Debug information
+            st.write("Debug - Input shape before prediction:", input_processed.shape)
+            
             try:
+                # Make prediction
                 prediction = model.predict(input_processed)
                 prediction_class = (prediction > 0.5).astype(int)
 
@@ -221,6 +204,11 @@ elif options == "Prediction":
                 st.subheader("Prediction Results")
                 st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
                 st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
+                
+                # Display input values used
+                st.subheader("Input Values Used")
+                st.write("Grocery Square Feet:", input_data['grocery_sqft'])
+                st.write("Meat Square Feet:", input_data['meat_sqft'])
 
             except Exception as e:
                 st.error(f"Prediction error: {str(e)}")
