@@ -134,7 +134,7 @@ elif options == "Visualizations":
         plt.xticks(rotation=45)
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
-
+        
 # Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
@@ -144,11 +144,11 @@ elif options == "Prediction":
         # Define only essential numerical features
         numerical_features = ['grocery_sqft', 'meat_sqft']
 
-        # Ensure columns exist in the dataset or add dummy columns
+        # Ensure columns exist in the dataset or add dummy columns with sensible values
         for col in ['store_sales', 'store_cost']:
             if col not in data.columns:
-                data[col] = 0.0  # Add dummy columns if missing
-                st.warning(f"Column '{col}' not found in dataset. Using default value of 0.0.")
+                data[col] = np.random.uniform(1000, 5000, size=len(data))  # Add random dummy values
+                st.warning(f"Column '{col}' not found in dataset. Using default random values.")
 
         # Append dummy features to the numerical features list if needed
         numerical_features.extend(['store_sales', 'store_cost'])
@@ -164,13 +164,17 @@ elif options == "Prediction":
                 max_val = float(data[col].max())
                 mean_val = float(data[col].mean())
 
-                input_data[col] = st.slider(
-                    f"Select {col}",
-                    min_value=min_val,
-                    max_value=max_val,
-                    value=mean_val,
-                    format="%.2f"
-                )
+                # Ensure slider values are valid
+                if min_val < max_val:
+                    input_data[col] = st.slider(
+                        f"Select {col}",
+                        min_value=min_val,
+                        max_value=max_val,
+                        value=mean_val,
+                        format="%.2f"
+                    )
+                else:
+                    st.error(f"Invalid range for {col}. Please check the dataset.")
 
         # Prediction Button
         if st.button("Predict"):
