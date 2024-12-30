@@ -148,19 +148,19 @@ elif options == "Prediction":
         st.subheader("Input Features")
         input_data = {}
 
-        # Add sliders for numerical inputs with step size of 1
+        # Add sliders for numerical inputs starting from zero
         for col in numerical_features:
             if col in data.columns:
                 if 'in millions' in col:
                     min_val = 0  # Start slider from zero
                     max_val = int(data[col].max() * 1000)  # Convert millions to thousands
                     mean_val = int(data[col].mean() * 1000)
-                    step = 1  # Step by 1 for precise control
+                    step = 1  # Step by one for precise control
                 else:
                     min_val = 0  # Start slider from zero
                     max_val = int(data[col].max())
                     mean_val = int(data[col].mean())
-                    step = 1  # Step by 1 for precise control
+                    step = 1  # Step by one for precise control
 
                 # Add slider
                 input_data[col] = st.slider(
@@ -185,26 +185,26 @@ elif options == "Prediction":
             # Debugging: Log the raw input data
             st.write("Debug - Raw Input Data:", input_df)
 
-            # Preprocess input
+            # Ensure consistent StandardScaler behavior
             numerical_columns = [col for col in numerical_features if col in data.columns]
             scaler = StandardScaler()
-            scaler.fit(data[numerical_columns])  # Fit the scaler on the original data
-            input_processed = scaler.transform(input_df)
+            scaler.fit(data[numerical_columns])  # Fit the scaler on the original dataset
 
-            # Convert scaled data to DataFrame
-            input_processed = pd.DataFrame(input_processed, columns=numerical_columns)
-
-            # Debugging: Log the scaled input data
-            st.write("Debug - Scaled Input Data:", input_processed)
+            # Scale the input
+            input_scaled = scaler.transform(input_df)
+            input_processed = pd.DataFrame(input_scaled, columns=numerical_columns)
 
             # Ensure input matches model's expected shape
-            expected_shape = 298
+            expected_shape = model.input_shape[1]
             current_shape = input_processed.shape[1]
 
             if current_shape < expected_shape:
                 for i in range(current_shape, expected_shape):
                     col_name = f"dummy_feature_{i}"
                     input_processed[col_name] = 0.0
+
+            # Debugging: Log the scaled input data
+            st.write("Debug - Scaled Input Data:", input_processed)
 
             # Debugging: Log the final input shape
             st.write("Debug - Final Input Shape:", input_processed.shape)
@@ -218,7 +218,7 @@ elif options == "Prediction":
                 # Display results
                 st.subheader("Prediction Results")
                 st.write(f"Predicted Class: **{prediction_class}**")
-                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # More precise confidence score
+                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # Four decimal precision
 
                 # Actionable Insights
                 st.subheader("Actionable Insights")
@@ -237,6 +237,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 # Footer
 st.write("-----")
