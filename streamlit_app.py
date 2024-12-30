@@ -144,100 +144,88 @@ elif options == "Prediction":
         # Define numerical features
         numerical_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
 
-        # Create input form for numerical features
+        # Input Form for Numerical Features
         st.subheader("Input Features")
         input_data = {}
 
-        # Add sliders for numerical inputs
+        # Dynamically create sliders for numerical inputs
         for col in numerical_features:
             if col in data.columns:
+                # Handle scale for "in millions" columns
                 if 'in millions' in col:
-                    min_val = 0  # Start slider from zero
+                    min_val = 0
                     max_val = int(data[col].max() * 1000)  # Convert millions to thousands
                     mean_val = int(data[col].mean() * 1000)
-                    step = 1  # Step by one for precise control
+                    step = 1
                 else:
-                    min_val = 0  # Start slider from zero
+                    min_val = 0
                     max_val = int(data[col].max())
                     mean_val = int(data[col].mean())
-                    step = 1  # Step by one for precise control
+                    step = 1
 
-                # Add slider
+                # Slider with unique key
                 input_data[col] = st.slider(
                     f"Select {col.replace('(in millions)', '(in thousands)')}",
                     min_value=min_val,
                     max_value=max_val,
                     value=mean_val,
                     step=step,
-                    key=f"slider_{col}"  # Unique key for each slider
+                    key=f"slider_{col}"  # Unique key
                 )
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
-            # Reload the model for each prediction
-            model = load_model_file()
+            # Load the model each time to reset its state
+            model = load_model("my_keras_model.h5")
 
-            # Convert input to DataFrame
+            # Prepare Input Data
             input_df = pd.DataFrame([input_data])
 
-            # Transform slider values back to original scale for prediction
+            # Convert slider values back to "millions" scale
             for col in ['store_sales(in millions)', 'store_cost(in millions)']:
                 if col in input_df.columns:
                     input_df[col] = input_df[col] / 1000  # Convert thousands back to millions
 
-            # Debugging: Log the raw input data (Remove these lines to hide debug info)
-            # st.write("Debug - Raw Input Data:", input_df)
-
-            # Preprocess input
-            numerical_columns = [col for col in numerical_features if col in data.columns]
+            # Preprocess the input
             scaler = StandardScaler()
-            scaler.fit(data[numerical_columns])  # Fit the scaler on the original dataset
-
-            # Scale the input
+            scaler.fit(data[numerical_features])  # Fit scaler on original data
             input_scaled = scaler.transform(input_df)
-            input_processed = pd.DataFrame(input_scaled, columns=numerical_columns)
 
-            # Debugging: Log the scaled input data (Remove these lines to hide debug info)
-            # st.write("Debug - Scaled Input Data:", input_processed)
-
-            # Ensure input matches model's expected shape
+            # Ensure input matches model input shape
+            input_processed = pd.DataFrame(input_scaled, columns=numerical_features)
             expected_shape = model.input_shape[1]
-            current_shape = input_processed.shape[1]
-
-            if current_shape < expected_shape:
-                for i in range(current_shape, expected_shape):
-                    col_name = f"dummy_feature_{i}"
-                    input_processed[col_name] = 0.0
+            if input_processed.shape[1] < expected_shape:
+                for i in range(input_processed.shape[1], expected_shape):
+                    input_processed[f"dummy_feature_{i}"] = 0.0
 
             try:
-                # Make prediction
+                # Make Prediction
                 prediction = model.predict(input_processed)
-                prediction_value = prediction[0][0]
+                prediction_value = float(prediction[0][0])  # Ensure confidence is a float
                 prediction_class = "High Demand" if prediction_value > 0.5 else "Low Demand"
 
-                # Display results
+                # Display Results
                 st.subheader("Prediction Results")
                 st.write(f"Predicted Class: **{prediction_class}**")
-                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # Four decimal precision
+                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # Show confidence up to 4 decimal places
 
                 # Actionable Insights
                 st.subheader("Actionable Insights")
                 if prediction_class == "High Demand":
                     st.success(
                         "Based on the prediction, this restaurant location is expected to experience **high demand**. "
-                        "Consider increasing inventory for critical items to avoid stockouts. Focus on optimizing sales of high-performing categories."
+                        "Consider increasing inventory for critical items to avoid stockouts and optimize sales."
                     )
                 else:
                     st.warning(
-                        "The prediction indicates **low demand**. Reduce inventory to minimize waste, and consider offering promotions to boost sales."
+                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
                     )
 
             except Exception as e:
-                st.error(f"Prediction error: {str(e)}")
+                st.error(f"Error during prediction: {str(e)}")
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
 
 # Footer
 st.write("-----")
