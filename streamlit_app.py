@@ -148,16 +148,16 @@ elif options == "Prediction":
         st.subheader("Input Features")
         input_data = {}
 
-        # Add sliders for numerical inputs with user-friendly values
+        # Add sliders for numerical inputs starting from zero
         for col in numerical_features:
             if col in data.columns:
                 if 'in millions' in col:
-                    min_val = int(data[col].min() * 1000)  # Convert millions to thousands
-                    max_val = int(data[col].max() * 1000)
+                    min_val = 0  # Start slider from zero
+                    max_val = int(data[col].max() * 1000)  # Convert millions to thousands
                     mean_val = int(data[col].mean() * 1000)
                     step = 100  # Step by hundreds
                 else:
-                    min_val = int(data[col].min())
+                    min_val = 0  # Start slider from zero
                     max_val = int(data[col].max())
                     mean_val = int(data[col].mean())
                     step = 10  # Step by tens
@@ -237,7 +237,6 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
 
 # Footer
 st.write("-----")
