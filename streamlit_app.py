@@ -142,22 +142,19 @@ elif options == "Prediction":
 
     try:
         # Define only essential numerical features
-        numerical_features = [
-            'grocery_sqft',
-            'meat_sqft'
-        ]
-        
-        # Create input form for numerical features only
+        numerical_features = ['grocery_sqft', 'meat_sqft', 'store_sales', 'store_cost']
+
+        # Create input form for numerical features
         st.subheader("Input Features")
         input_data = {}
-        
-        # Add numerical inputs
+
+        # Add sliders for numerical inputs
         for col in numerical_features:
             if col in data.columns:
                 min_val = float(data[col].min())
                 max_val = float(data[col].max())
                 mean_val = float(data[col].mean())
-                
+
                 input_data[col] = st.slider(
                     f"Select {col}",
                     min_value=min_val,
@@ -170,57 +167,50 @@ elif options == "Prediction":
         if st.button("Predict"):
             # Convert input to DataFrame
             input_df = pd.DataFrame([input_data])
-            
-            # Scale the numerical features
+
+            # Preprocess input
             scaler = StandardScaler()
             scaler.fit(data[numerical_features])
             input_scaled = scaler.transform(input_df)
-            
-            # Convert to DataFrame with column names
-            input_processed = pd.DataFrame(
-                input_scaled, 
-                columns=numerical_features
-            )
-            
-            # Add missing columns to match model's expected shape
-            expected_shape = 298
-            current_shape = input_processed.shape[1]
-            
-            if current_shape < expected_shape:
-                # Add dummy columns to match expected shape
-                for i in range(current_shape, expected_shape):
-                    col_name = f"dummy_feature_{i}"
-                    input_processed[col_name] = 0.0
-            
-            # Debug information
-            st.write("Debug - Input shape before prediction:", input_processed.shape)
-            
-            try:
-                # Make prediction
-                prediction = model.predict(input_processed)
-                prediction_class = (prediction > 0.5).astype(int)
 
-                # Display results
-                st.subheader("Prediction Results")
-                st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
-                st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
-                
-                # Display input values used
-                st.subheader("Input Values Used")
-                st.write("Grocery Square Feet:", input_data['grocery_sqft'])
-                st.write("Meat Square Feet:", input_data['meat_sqft'])
+            # Load the pre-trained model
+            model = load_model("my_keras_model.h5")
 
-            except Exception as e:
-                st.error(f"Prediction error: {str(e)}")
-                st.write("Input shape:", input_processed.shape)
-                st.write("Expected shape:", model.input_shape)
+            # Perform prediction
+            prediction = model.predict(input_scaled)
+            prediction_value = prediction[0][0]
+
+            # Interpret prediction
+            if prediction_value > 0.5:
+                prediction_class = "High Demand"
+            else:
+                prediction_class = "Low Demand"
+
+            # Provide actionable insights
+            st.subheader("Prediction Results")
+            st.write(f"Predicted Class: **{prediction_class}**")
+            st.write(f"Prediction Confidence: **{prediction_value:.2f}**")
+
+            # Actionable Insights
+            st.subheader("Actionable Insights")
+            if prediction_class == "High Demand":
+                st.success(
+                    "Based on the prediction, this restaurant location is expected to experience **high demand**. "
+                    "Consider increasing inventory for critical items to avoid stockouts. Focus on optimizing sales of high-performing categories."
+                )
+            else:
+                st.warning(
+                    "The prediction indicates **low demand**. Reduce inventory to minimize waste, and consider offering promotions to boost sales."
+                )
+
+            # Display input values used
+            st.subheader("Input Values Used")
+            for key, value in input_data.items():
+                st.write(f"{key}: {value:.2f}")
 
     except Exception as e:
-        st.error("Error in prediction section:")
-        st.error(str(e))
-        st.write("Debug information:")
-        st.write("Available columns:", data.columns.tolist())
-        st.write("Model input shape:", model.input_shape)
+        st.error(f"Error in prediction section: {str(e)}")
+
 # Footer
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
