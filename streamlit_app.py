@@ -141,28 +141,47 @@ elif options == "Prediction":
     st.write("Use this section to predict consumer trends and potential sales using the trained Neural Network model.")
 
     try:
-        # Separate numerical and categorical columns
-        categorical_columns = data.select_dtypes(include=['object']).columns
-        numerical_columns = [col for col in data.columns 
-                           if col not in categorical_columns 
-                           and col not in ['binary_target', 'unit_sales(in millions)']]
+        # Define only the relevant features for prediction
+        relevant_features = [
+            'salad_bar',
+            'prepared_food',
+            'cost',
+            'store_sales(in millions)',
+            'store_cost(in millions)',
+            'units_per_case',
+            'grocery_sqft',
+            'frozen_sqft',
+            'meat_sqft'
+        ]
+
+        # Filter the data to include only relevant features
+        prediction_data = data[relevant_features].copy()
+
+        # Separate numerical and categorical columns from relevant features
+        categorical_columns = prediction_data.select_dtypes(include=['object']).columns
+        numerical_columns = prediction_data.select_dtypes(include=['float64', 'int64']).columns
 
         # Input Features
         st.subheader("Input Features")
         input_data = {}
 
-        # Categorical inputs
+        # Categorical inputs (if any)
         for col in categorical_columns:
-            unique_values = sorted(data[col].unique().tolist())
+            unique_values = sorted(prediction_data[col].unique().tolist())
             input_data[col] = st.selectbox(f"Select {col}", unique_values)
 
         # Numerical inputs
         for col in numerical_columns:
+            min_val = float(prediction_data[col].min())
+            max_val = float(prediction_data[col].max())
+            mean_val = float(prediction_data[col].mean())
+            
             input_data[col] = st.slider(
                 f"Select {col}",
-                float(data[col].min()),
-                float(data[col].max()),
-                float(data[col].mean())
+                min_value=min_val,
+                max_value=max_val,
+                value=mean_val,
+                format="%.2f"
             )
 
         # Convert to DataFrame
@@ -171,15 +190,24 @@ elif options == "Prediction":
         # Prediction Button
         if st.button("Predict"):
             # Preprocess input
-            processed_input = preprocess_input(input_df, data)
+            scaler = StandardScaler()
             
-            # Debug information
-            st.write("Debug Info:")
-            st.write("Processed input shape:", processed_input.shape)
-            st.write("Model input shape:", model.input_shape)
+            # Fit scaler on numerical columns of original data
+            scaler.fit(prediction_data[numerical_columns])
             
+            # Scale input numerical data
+            input_df[numerical_columns] = scaler.transform(input_df[numerical_columns])
+            
+            # Handle categorical variables if any
+            if not categorical_columns.empty:
+                input_df = pd.get_dummies(input_df, columns=categorical_columns)
+                # Ensure all columns from training data are present
+                for col in model.input_shape[1:]:
+                    if col not in input_df.columns:
+                        input_df[col] = 0
+
             # Make prediction
-            prediction = model.predict(processed_input)
+            prediction = model.predict(input_df)
             prediction_class = (prediction > 0.5).astype(int)
 
             # Display results
@@ -187,11 +215,16 @@ elif options == "Prediction":
             st.write(f"Predicted Class: **{'Above Threshold' if prediction_class[0] == 1 else 'Below Threshold'}**")
             st.write(f"Prediction Probability: **{prediction[0][0]:.2f}**")
 
+            # Display feature importance (optional)
+            st.subheader("Input Values Used")
+            st.dataframe(input_df)
+
     except Exception as e:
         st.error("Error in prediction section:")
         st.error(str(e))
-        st.write("Please check your data and model compatibility.")
-
+        st.write("Debug information:")
+        st.write("Available columns:", data.columns.tolist())
+        st.write("Model input shape:", model.input_shape)
 # Footer
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
