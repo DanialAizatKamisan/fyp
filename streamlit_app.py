@@ -141,17 +141,8 @@ elif options == "Prediction":
     st.write("Use this section to predict consumer trends using the trained model.")
 
     try:
-        # Define only essential numerical features
-        numerical_features = ['grocery_sqft', 'meat_sqft']
-
-        # Ensure columns exist in the dataset or add default columns with fixed ranges
-        for col, default_value in {'store_sales': 3000.0, 'store_cost': 3000.0}.items():
-            if col not in data.columns:
-                data[col] = default_value  # Add fixed default value
-                st.warning(f"Column '{col}' not found in dataset. Using default value of {default_value}.")
-        
-        # Append the additional features
-        numerical_features.extend(['store_sales', 'store_cost'])
+        # Define numerical features with corrected column names
+        numerical_features = ['grocery_sqft', 'meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
 
         # Create input form for numerical features
         st.subheader("Input Features")
@@ -160,9 +151,9 @@ elif options == "Prediction":
         # Add sliders for numerical inputs
         for col in numerical_features:
             if col in data.columns:
-                min_val = float(data[col].min()) if col in ['grocery_sqft', 'meat_sqft'] else 1000.0
-                max_val = float(data[col].max()) if col in ['grocery_sqft', 'meat_sqft'] else 5000.0
-                mean_val = float(data[col].mean()) if col in ['grocery_sqft', 'meat_sqft'] else default_value
+                min_val = float(data[col].min())
+                max_val = float(data[col].max())
+                mean_val = float(data[col].mean())
 
                 # Ensure slider values are valid
                 input_data[col] = st.slider(
