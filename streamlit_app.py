@@ -137,6 +137,7 @@ elif options == "Prediction":
         # Input Form for Numerical Features
         st.subheader("Input Features")
         input_data = {}
+        invalid_input = False  # Flag to track invalid inputs
 
         # Dynamically create sliders for numerical inputs
         for col in numerical_features:
@@ -161,7 +162,7 @@ elif options == "Prediction":
                     display_label = col.replace('meat_sqft', 'Estimated Meat Usage Estimate (Kg)')
 
                 # Slider with updated label
-                input_data[col] = st.slider(
+                input_value = st.slider(
                     f"Select {display_label}",
                     min_value=min_val,
                     max_value=max_val,
@@ -169,12 +170,16 @@ elif options == "Prediction":
                     step=step,
                     key=f"slider_{col}"  # Unique key
                 )
+                input_data[col] = input_value
+
+                # Check if the input is zero
+                if input_value == 0:
+                    invalid_input = True
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
-            # Check if all inputs are 0
-            if all(value == 0 for value in input_data.values()):
-                st.error("Error: All input values are set to 0. Please adjust the sliders to provide meaningful input data for the prediction.")
+            if invalid_input:
+                st.error("Error: All input values must be greater than 0. Please adjust the sliders.")
             else:
                 try:
                     # Reload the model fresh every time to avoid state caching
@@ -236,6 +241,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 # Footer
 st.write("-----")
