@@ -172,63 +172,67 @@ elif options == "Prediction":
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
-            try:
-                # Reload the model fresh every time to avoid state caching
-                model = load_model("my_keras_model.h5")
+            # Check if all inputs are 0
+            if all(value == 0 for value in input_data.values()):
+                st.error("Error: All input values are set to 0. Please adjust the sliders to provide meaningful input data for the prediction.")
+            else:
+                try:
+                    # Reload the model fresh every time to avoid state caching
+                    model = load_model("my_keras_model.h5")
 
-                # Prepare Input Data
-                input_df = pd.DataFrame([input_data])
+                    # Prepare Input Data
+                    input_df = pd.DataFrame([input_data])
 
-                # Convert slider values back to "millions" scale
-                for col in ['store_sales(in millions)', 'store_cost(in millions)']:
-                    if col in input_df.columns:
-                        input_df[col] = input_df[col] / 1000  # Convert thousands back to millions
+                    # Convert slider values back to "millions" scale
+                    for col in ['store_sales(in millions)', 'store_cost(in millions)']:
+                        if col in input_df.columns:
+                            input_df[col] = input_df[col] / 1000  # Convert thousands back to millions
 
-                # Preprocess the input
-                scaler = StandardScaler()
-                scaler.fit(data[numerical_features])  # Fit scaler on original data
-                input_scaled = scaler.transform(input_df)
+                    # Preprocess the input
+                    scaler = StandardScaler()
+                    scaler.fit(data[numerical_features])  # Fit scaler on original data
+                    input_scaled = scaler.transform(input_df)
 
-                # Ensure input matches model input shape
-                input_processed = pd.DataFrame(input_scaled, columns=numerical_features)
-                expected_shape = model.input_shape[1]
-                if input_processed.shape[1] < expected_shape:
-                    for i in range(input_processed.shape[1], expected_shape):
-                        col_name = f"dummy_feature_{i}"
-                        input_processed[col_name] = 0.0
+                    # Ensure input matches model input shape
+                    input_processed = pd.DataFrame(input_scaled, columns=numerical_features)
+                    expected_shape = model.input_shape[1]
+                    if input_processed.shape[1] < expected_shape:
+                        for i in range(input_processed.shape[1], expected_shape):
+                            col_name = f"dummy_feature_{i}"
+                            input_processed[col_name] = 0.0
 
-                # Make Prediction
-                prediction = model.predict(input_processed)
-                prediction_value = float(prediction[0][0])  # Ensure confidence is a float
+                    # Make Prediction
+                    prediction = model.predict(input_processed)
+                    prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-                # Handle extreme values
-                if prediction_value < 0.01:
-                    prediction_value = np.random.uniform(0.01, 0.05)  # Avoid exact 0.00
-                elif prediction_value > 0.99:
-                    prediction_value = np.random.uniform(0.95, 0.99)  # Avoid exact 1.00
+                    # Handle extreme values
+                    if prediction_value < 0.01:
+                        prediction_value = np.random.uniform(0.01, 0.05)  # Avoid exact 0.00
+                    elif prediction_value > 0.99:
+                        prediction_value = np.random.uniform(0.95, 0.99)  # Avoid exact 1.00
 
-                # Determine prediction class
-                prediction_class = "High Demand" if prediction_value > 0.5 else "Low Demand"
+                    # Determine prediction class
+                    prediction_class = "High Demand" if prediction_value > 0.5 else "Low Demand"
 
-                # Display Results
-                st.subheader("Prediction Results")
-                st.write(f"Predicted Class: **{prediction_class}**")
-                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # Show confidence up to 4 decimal places
+                    # Display Results
+                    st.subheader("Prediction Results")
+                    st.write(f"Predicted Class: **{prediction_class}**")
+                    st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # Show confidence up to 4 decimal places
 
-                # Actionable Insights
-                st.subheader("Actionable Insights")
-                if prediction_class == "High Demand":
-                    st.success(
-                        "Based on the prediction, this restaurant location is expected to experience **high demand**. "
-                        "Consider increasing inventory for critical items to avoid stockouts and optimize sales."
-                    )
-                else:
-                    st.warning(
-                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
-                    )
+                    # Actionable Insights
+                    st.subheader("Actionable Insights")
+                    if prediction_class == "High Demand":
+                        st.success(
+                            "Based on the prediction, this restaurant location is expected to experience **high demand**. "
+                            "Consider increasing inventory for critical items to avoid stockouts and optimize sales."
+                        )
+                    else:
+                        st.warning(
+                            "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+                        )
 
-            except Exception as e:
-                st.error(f"Error during prediction: {str(e)}")
+                except Exception as e:
+                    st.error(f"Error during prediction: {str(e)}")
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
