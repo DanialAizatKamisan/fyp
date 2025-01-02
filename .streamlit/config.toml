@@ -1,6 +1,6 @@
 [theme]
-primaryColor = "#10A37F"  # Vibrant green for buttons and highlights
-backgroundColor = "#202123"  # Dark grey, similar to ChatGPT's background
-secondaryBackgroundColor = "#343541"  # Slightly lighter grey for contrasting sections
-textColor = "#E5E5E5"  # Light grey for readability against the dark background
-font = "sans serif"  # Modern and clean font style for readability
+primaryColor = "#10A37F"  
+backgroundColor = "#202123"  
+secondaryBackgroundColor = "#343541"  
+textColor = "#E5E5E5"  
+font = "sans serif"  
