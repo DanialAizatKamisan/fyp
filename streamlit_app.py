@@ -148,70 +148,65 @@ elif options == "Prediction":
         st.subheader("Input Features")
         input_data = {}
 
-     # Dynamically create sliders for numerical inputs
-    for col in numerical_features:
-    if col in data.columns:
-        # Handle scale for "in millions" columns
-        if 'in millions' in col:
-            min_val = 0
-            max_val = int(data[col].max() * 1000)  # Convert millions to thousands
-            mean_val = int(data[col].mean() * 1000)
-            step = 1
+        # Dynamically create sliders for numerical inputs
+        for col in numerical_features:
+            if col in data.columns:
+                # Handle scale for "in millions" columns
+                if 'in millions' in col:
+                    min_val = 0
+                    max_val = int(data[col].max() * 1000)  # Convert millions to thousands
+                    mean_val = int(data[col].mean() * 1000)
+                    step = 1
 
-            # Update labels for display
-            display_label = col.replace('store_sales(in millions)', 'Daily Sales Revenue ($K)') \
-                               .replace('store_cost(in millions)', 'Daily Operational Cost ($K)')
-        else:
-            min_val = 0
-            max_val = int(data[col].max())
-            mean_val = int(data[col].mean())
-            step = 1
+                    # Update labels for display
+                    display_label = col.replace('store_sales(in millions)', 'Daily Sales Revenue ($K)') \
+                                       .replace('store_cost(in millions)', 'Daily Operational Cost ($K)')
+                else:
+                    min_val = 0
+                    max_val = int(data[col].max())
+                    mean_val = int(data[col].mean())
+                    step = 1
 
-            # Update label for meat section
-            display_label = col.replace('meat_sqft', 'Meat Storage Area Size (sq ft)')
+                    # Update label for meat section
+                    display_label = col.replace('meat_sqft', 'Meat Storage Area Size (sq ft)')
 
-        # Slider with updated label
-        input_data[col] = st.slider(
-            f"Select {display_label}",
-            min_value=min_val,
-            max_value=max_val,
-            value=mean_val,
-            step=step,
-            key=f"slider_{col}"  # Unique key
-        )
-
+                # Slider with updated label
+                input_data[col] = st.slider(
+                    f"Select {display_label}",
+                    min_value=min_val,
+                    max_value=max_val,
+                    value=mean_val,
+                    step=step,
+                    key=f"slider_{col}"  # Unique key
+                )
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
-            # Reload the model fresh every time to avoid state caching
-            model = load_model("my_keras_model.h5")
-
-            # Prepare Input Data
-            input_df = pd.DataFrame([input_data])
-
-            # Convert slider values back to "millions" scale
-            for col in ['store_sales(in millions)', 'store_cost(in millions)']:
-                if col in input_df.columns:
-                    input_df[col] = input_df[col] / 1000  # Convert thousands back to millions
-
-            # Preprocess the input
-            scaler = StandardScaler()
-            scaler.fit(data[numerical_features])  # Fit scaler on original data
-            input_scaled = scaler.transform(input_df)
-
-            # Add slight jitter to prevent stagnant results
-            jitter = 1e-5  # Small value to introduce variation
-            input_scaled += np.random.uniform(-jitter, jitter, input_scaled.shape)
-
-            # Ensure input matches model input shape
-            input_processed = pd.DataFrame(input_scaled, columns=numerical_features)
-            expected_shape = model.input_shape[1]
-            if input_processed.shape[1] < expected_shape:
-                for i in range(input_processed.shape[1], expected_shape):
-                    col_name = f"dummy_feature_{i}"
-                    input_processed[col_name] = 0.0
-
             try:
+                # Reload the model fresh every time to avoid state caching
+                model = load_model("my_keras_model.h5")
+
+                # Prepare Input Data
+                input_df = pd.DataFrame([input_data])
+
+                # Convert slider values back to "millions" scale
+                for col in ['store_sales(in millions)', 'store_cost(in millions)']:
+                    if col in input_df.columns:
+                        input_df[col] = input_df[col] / 1000  # Convert thousands back to millions
+
+                # Preprocess the input
+                scaler = StandardScaler()
+                scaler.fit(data[numerical_features])  # Fit scaler on original data
+                input_scaled = scaler.transform(input_df)
+
+                # Ensure input matches model input shape
+                input_processed = pd.DataFrame(input_scaled, columns=numerical_features)
+                expected_shape = model.input_shape[1]
+                if input_processed.shape[1] < expected_shape:
+                    for i in range(input_processed.shape[1], expected_shape):
+                        col_name = f"dummy_feature_{i}"
+                        input_processed[col_name] = 0.0
+
                 # Make Prediction
                 prediction = model.predict(input_processed)
                 prediction_value = float(prediction[0][0])  # Ensure confidence is a float
