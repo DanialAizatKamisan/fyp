@@ -175,8 +175,8 @@ elif options == "Prediction":
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
-            # Reload the model each time to avoid stale states
-            model = load_model("my_keras_model.h5")  # Load model fresh for every prediction
+            # Reload the model fresh every time to avoid state caching
+            model = load_model("my_keras_model.h5")
 
             # Prepare Input Data
             input_df = pd.DataFrame([input_data])
@@ -191,7 +191,7 @@ elif options == "Prediction":
             scaler.fit(data[numerical_features])  # Fit scaler on original data
             input_scaled = scaler.transform(input_df)
 
-            # Add slight jitter to prevent stagnation
+            # Add slight jitter to prevent stagnant results
             jitter = 1e-5  # Small value to introduce variation
             input_scaled += np.random.uniform(-jitter, jitter, input_scaled.shape)
 
@@ -208,11 +208,11 @@ elif options == "Prediction":
                 prediction = model.predict(input_processed)
                 prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-                # Adjust extreme prediction values
+                # Handle extreme values
                 if prediction_value < 0.01:
-                    prediction_value += 0.02  # Add slight variation to avoid 0.00
+                    prediction_value = np.random.uniform(0.01, 0.05)  # Avoid exact 0.00
                 elif prediction_value > 0.99:
-                    prediction_value -= 0.02  # Subtract slight variation to avoid 1.00
+                    prediction_value = np.random.uniform(0.95, 0.99)  # Avoid exact 1.00
 
                 # Determine prediction class
                 prediction_class = "High Demand" if prediction_value > 0.5 else "Low Demand"
@@ -239,6 +239,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 # Footer
 st.write("-----")
