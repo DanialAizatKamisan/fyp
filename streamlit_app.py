@@ -41,11 +41,6 @@ def load_model_file():
 try:
     data = load_data()
     model = load_model_file()
-    
-    # Debug information
-    st.sidebar.write("Debug Info:")
-    st.sidebar.write("Data shape:", data.shape)
-    st.sidebar.write("Model input shape:", model.input_shape)
 except Exception as e:
     st.error(f"Error loading data or model: {str(e)}")
     st.stop()
@@ -95,11 +90,6 @@ if options == "Home":
     """)
     st.write("Here's a preview of the dataset:")
     st.dataframe(data.head(10))
-    
-    # Display column information
-    st.write("\nColumn Information:")
-    for col in data.columns:
-        st.write(f"- {col}: {data[col].dtype}")
 
 # Visualization Section
 elif options == "Visualizations":
@@ -242,7 +232,6 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
 
 # Footer
 st.write("-----")
