@@ -148,8 +148,8 @@ elif options == "Prediction":
         st.subheader("Input Features")
         input_data = {}
 
-       # Dynamically create sliders for numerical inputs
-for col in numerical_features:
+     # Dynamically create sliders for numerical inputs
+    for col in numerical_features:
     if col in data.columns:
         # Handle scale for "in millions" columns
         if 'in millions' in col:
@@ -179,6 +179,7 @@ for col in numerical_features:
             step=step,
             key=f"slider_{col}"  # Unique key
         )
+
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
