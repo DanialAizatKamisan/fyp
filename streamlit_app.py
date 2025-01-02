@@ -148,30 +148,37 @@ elif options == "Prediction":
         st.subheader("Input Features")
         input_data = {}
 
-        # Dynamically create sliders for numerical inputs
-        for col in numerical_features:
-            if col in data.columns:
-                # Handle scale for "in millions" columns
-                if 'in millions' in col:
-                    min_val = 0
-                    max_val = int(data[col].max() * 1000)  # Convert millions to thousands
-                    mean_val = int(data[col].mean() * 1000)
-                    step = 1
-                else:
-                    min_val = 0
-                    max_val = int(data[col].max())
-                    mean_val = int(data[col].mean())
-                    step = 1
+       # Dynamically create sliders for numerical inputs
+for col in numerical_features:
+    if col in data.columns:
+        # Handle scale for "in millions" columns
+        if 'in millions' in col:
+            min_val = 0
+            max_val = int(data[col].max() * 1000)  # Convert millions to thousands
+            mean_val = int(data[col].mean() * 1000)
+            step = 1
 
-                # Slider with unique key
-                input_data[col] = st.slider(
-                    f"Select {col.replace('(in millions)', '(in thousands)')}",
-                    min_value=min_val,
-                    max_value=max_val,
-                    value=mean_val,
-                    step=step,
-                    key=f"slider_{col}"  # Unique key
-                )
+            # Update labels for display
+            display_label = col.replace('store_sales(in millions)', 'Daily Sales Revenue ($K)') \
+                               .replace('store_cost(in millions)', 'Daily Operational Cost ($K)')
+        else:
+            min_val = 0
+            max_val = int(data[col].max())
+            mean_val = int(data[col].mean())
+            step = 1
+
+            # Update label for meat section
+            display_label = col.replace('meat_sqft', 'Meat Storage Area Size (sq ft)')
+
+        # Slider with updated label
+        input_data[col] = st.slider(
+            f"Select {display_label}",
+            min_value=min_val,
+            max_value=max_val,
+            value=mean_val,
+            step=step,
+            key=f"slider_{col}"  # Unique key
+        )
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
