@@ -149,8 +149,8 @@ elif options == "Prediction":
                     step = 1
 
                     # Update labels for display
-                    display_label = col.replace('store_sales(in millions)', 'Daily Sales Revenue (Rm(K))') \
-                                       .replace('store_cost(in millions)', 'Daily Operational Cost (Rm(K))')
+                    display_label = col.replace('store_sales(in millions)', 'Estimated Daily Sales Revenue (Rm(K))') \
+                                       .replace('store_cost(in millions)', 'Estimated Daily Operational Cost (Rm(K))')
                 else:
                     min_val = 0
                     max_val = int(data[col].max())
@@ -158,7 +158,7 @@ elif options == "Prediction":
                     step = 1
 
                     # Update label for meat section
-                    display_label = col.replace('meat_sqft', 'Meat Usage Estimate (Kg)')
+                    display_label = col.replace('meat_sqft', 'Estimated Meat Usage Estimate (Kg)')
 
                 # Slider with updated label
                 input_data[col] = st.slider(
