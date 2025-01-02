@@ -1,6 +1,7 @@
 [theme]
-primaryColor="#F63366"
-backgroundColor="#FFFFFF"
-secondaryBackgroundColor="#F0F2F6"
-textColor="#262730"
-font="sans serif"
+primaryColor = "#4CAF50"  # Subtle green for highlights
+backgroundColor = "#E5E5E5"  # Neutral light grey for a minimalist background
+secondaryBackgroundColor = "#D6D6D6"  # Slightly darker grey for contrast
+textColor = "#333333"  # Dark grey for professional and clear text
+font = "monospace"  # Clean and modern font style for a minimalist aesthetic
+
