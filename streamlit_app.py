@@ -158,7 +158,7 @@ elif options == "Prediction":
                     step = 1
 
                     # Update label for meat section
-                    display_label = col.replace('meat_sqft', 'Meat Storage Area Size (Meter)')
+                    display_label = col.replace('meat_sqft', 'Meat Usage Estimate (Kg)')
 
                 # Slider with updated label
                 input_data[col] = st.slider(
