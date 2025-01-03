@@ -198,19 +198,8 @@ elif options == "Prediction":
                     scaler.fit(data[numerical_features])  # Fit scaler on original data
                     input_scaled = scaler.transform(input_df)
 
-                    # Ensure input matches model input shape
+                    # Ensure input matches model input shape exactly
                     input_processed = pd.DataFrame(input_scaled, columns=numerical_features)
-                    expected_shape = model.input_shape[1]
-
-                    # Adjust input size if necessary
-                    if input_processed.shape[1] < expected_shape:
-                        for i in range(input_processed.shape[1], expected_shape):
-                            # Rotate through the slider column names for padding
-                            col_name = numerical_features[(i - input_processed.shape[1]) % len(numerical_features)]
-                            input_processed[col_name] = input_processed[col_name].mean()  # Use mean for padding
-
-                    # Reorder columns to match expected shape
-                    input_processed = input_processed.iloc[:, :expected_shape]
 
                     # Make Prediction
                     prediction = model.predict(input_processed)
@@ -256,6 +245,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 # Footer
 st.write("-----")
