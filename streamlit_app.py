@@ -217,7 +217,12 @@ elif options == "Prediction":
                         prediction_value = np.random.uniform(0.95, 0.99)  # Avoid exact 1.00
 
                     # Determine prediction class
-                    prediction_class = "High Demand" if prediction_value > 0.5 else "Low Demand"
+                    if prediction_value < 0.4:
+                        prediction_class = "Low Demand"
+                    elif 0.4 <= prediction_value <= 0.7:
+                        prediction_class = "Moderate Demand"
+                    else:
+                        prediction_class = "High Demand"
 
                     # Display Results
                     st.subheader("Prediction Results")
@@ -230,6 +235,10 @@ elif options == "Prediction":
                         st.success(
                             "Based on the prediction, this restaurant location is expected to experience **high demand**. "
                             "Consider increasing inventory for critical items to avoid stockouts and optimize sales."
+                        )
+                    elif prediction_class == "Moderate Demand":
+                        st.info(
+                            "The prediction indicates **moderate demand**. Ensure inventory levels are balanced to meet customer needs."
                         )
                     else:
                         st.warning(
