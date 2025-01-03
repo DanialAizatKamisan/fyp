@@ -7,19 +7,20 @@ from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
 
 # Title and Introduction
-st.title('Final Year Project: Using Data Analytics to Identify Consumer Trends and Reduce Food Waste in Restaurants 🥗')
+st.title('Final Year Project: Leveraging Data Analytics to Optimize Consumer Trends and Minimize Food Waste in Restaurants 🥗')
 
 st.info('''
 Welcome to the **Restaurant Analytics Dashboard**!
-This platform uses advanced data analytics to **identify consumer trends** and provide insights to help **reduce food waste** in restaurants.
+This innovative platform harnesses the power of data analytics to **analyze consumer trends** and deliver actionable insights to **reduce food waste** effectively in the restaurant industry.
 
 **Features:**
-- View trends in consumer preferences.
-- Explore key metrics related to unit sales and waste reduction.
-- Predict future trends using machine learning models.
+- Uncover patterns in consumer behavior and preferences.
+- Analyze key metrics such as sales performance and operational costs.
+- Forecast future trends using a trained neural network model.
 
-Together, we aim to promote sustainability and improve decision-making in the restaurant industry.
+This project aims to promote **sustainability** while enhancing **decision-making processes** for restaurant managers and stakeholders.
 ''')
+
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
