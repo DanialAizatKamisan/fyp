@@ -131,6 +131,7 @@ elif options == "Visualizations":
         plt.xticks(rotation=45)
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
+        
 # Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
@@ -225,6 +226,17 @@ elif options == "Prediction":
                 st.write(f"Predicted Class: **{prediction_class}**")
                 st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
+                # Gauge Visualization
+                st.subheader("Confidence Gauge")
+                fig, ax = plt.subplots(figsize=(6, 1))
+                ax.barh(['Confidence'], [prediction_value], color='blue', height=0.3)
+                ax.set_xlim(0, 1)
+                ax.set_xticks([0, 0.25, 0.5, 0.75, 1])
+                ax.set_xticklabels(['0%', '25%', '50%', '75%', '100%'])
+                ax.set_title("Prediction Confidence")
+                ax.set_xlabel("Confidence Level")
+                st.pyplot(fig)
+
                 # Actionable Insights
                 st.subheader("Actionable Insights")
                 if prediction_class == "High Demand":
@@ -247,6 +259,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 # Footer
 st.write("-----")
