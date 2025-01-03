@@ -186,50 +186,56 @@ elif options == "Prediction":
                 scaler.fit(data[numerical_features + fixed_features])  # Fit scaler on relevant columns
                 input_scaled = scaler.transform(input_df)
 
-                # Ensure input matches model's expected shape
-if input_processed.shape[1] != expected_shape:
-    st.error(f"Input shape mismatch. Expected {expected_shape} features, got {input_processed.shape[1]}")
-    st.stop()
+                # Ensure input matches model input shape
+                input_processed = pd.DataFrame(input_scaled, columns=numerical_features + fixed_features)
+                expected_shape = model.input_shape[1]
+                if input_processed.shape[1] != expected_shape:
+                    st.error(f"Input shape mismatch. Expected {expected_shape} features, got {input_processed.shape[1]}")
+                    st.stop()
 
-# Make Prediction
-try:
-    prediction = model.predict(input_processed)
-    prediction_value = float(prediction[0][0])  # Ensure confidence is a float
+                # Make Prediction
+                prediction = model.predict(input_processed)
+                prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-    # Handle extreme values for better representation
-    prediction_value = max(0.01, min(0.99, prediction_value))  # Clamp to [0.01, 0.99]
+                # Handle extreme values for better representation
+                prediction_value = max(0.01, min(0.99, prediction_value))  # Clamp to [0.01, 0.99]
 
-    # Determine prediction class
-    if prediction_value < 0.4:
-        prediction_class = "Low Demand"
-    elif 0.4 <= prediction_value <= 0.7:
-        prediction_class = "Moderate Demand"
-    else:
-        prediction_class = "High Demand"
+                # Determine prediction class
+                if prediction_value < 0.4:
+                    prediction_class = "Low Demand"
+                elif 0.4 <= prediction_value <= 0.7:
+                    prediction_class = "Moderate Demand"
+                else:
+                    prediction_class = "High Demand"
 
-    # Display Results
-    st.subheader("Prediction Results")
-    st.write(f"Predicted Class: **{prediction_class}**")
-    st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
+                # Display Results
+                st.subheader("Prediction Results")
+                st.write(f"Predicted Class: **{prediction_class}**")
+                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # Show confidence up to 4 decimal places
 
-    # Actionable Insights
-    st.subheader("Actionable Insights")
-    if prediction_class == "High Demand":
-        st.success(
-            "This restaurant location is expected to experience **high demand**. "
-            "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
-        )
-    elif prediction_class == "Moderate Demand":
-        st.info(
-            "This restaurant location is expected to experience **moderate demand**. "
-            "Maintain a balanced resource inventory to optimize operations."
-        )
-    else:
-        st.warning(
-            "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
-        )
-except Exception as e:
-    st.error(f"Error during prediction: {str(e)}")
+                # Actionable Insights
+                st.subheader("Actionable Insights")
+                if prediction_class == "High Demand":
+                    st.success(
+                        "This restaurant location is expected to experience **high demand**. "
+                        "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
+                    )
+                elif prediction_class == "Moderate Demand":
+                    st.info(
+                        "This restaurant location is expected to experience **moderate demand**. "
+                        "Maintain a balanced resource inventory to optimize operations."
+                    )
+                else:
+                    st.warning(
+                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+                    )
+
+            except Exception as e:
+                st.error(f"Error during prediction: {str(e)}")
+
+    except Exception as e:
+        st.error(f"Error in prediction section: {str(e)}")
+
 
 
 # Footer
