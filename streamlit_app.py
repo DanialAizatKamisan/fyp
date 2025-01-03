@@ -201,7 +201,7 @@ elif options == "Prediction":
                     # Ensure input matches model's expected shape
                     if input_scaled.shape[1] != 3:  # If not 3 features
                         st.error(f"Input shape mismatch. Expected 3 features, got {input_scaled.shape[1]}")
-                        return
+                        st.stop()  # Using st.stop() instead of return
                     
                     # Reshape if necessary - try both possibilities
                     try:
@@ -256,7 +256,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
+        
 # Footer
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
