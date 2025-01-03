@@ -125,16 +125,14 @@ elif options == "Visualizations":
         plt.xticks(rotation=45)
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
-
 # Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
     st.write("Use this section to predict consumer trends and estimate resource requirements.")
 
     try:
-        # Define numerical features
-        numerical_features = ['store_sales(in millions)']  # User interacts only with Sales Revenue slider
-        fixed_features = ['meat_sqft', 'store_cost(in millions)']  # Dependent values to estimate
+        # Define all features
+        required_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
 
         # Input Form for Numerical Features
         st.subheader("Input Features")
@@ -171,6 +169,9 @@ elif options == "Prediction":
         input_data['meat_sqft'] = estimated_meat
         input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
 
+        # Reorder input_data to match the model's training order
+        input_data_ordered = {feature: input_data[feature] for feature in required_features}
+
         # Prediction Button
         if st.button("Predict", key="predict_button"):
             try:
@@ -178,16 +179,16 @@ elif options == "Prediction":
                 model = load_model("my_keras_model2.h5")
 
                 # Prepare Input Data
-                input_df = pd.DataFrame([input_data])
+                input_df = pd.DataFrame([input_data_ordered])  # Ensure correct order of features
 
                 # Preprocess the input
                 scaler = StandardScaler()
-                scaler.fit(data[['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']])  # Scale all 3 columns
+                scaler.fit(data[required_features])  # Scale using the required features
                 input_scaled = scaler.transform(input_df)
 
                 # Ensure input matches model's expected shape
-                if input_scaled.shape[1] != 3:  # Check for 3 features
-                    st.error(f"Input shape mismatch. Expected 3 features, got {input_scaled.shape[1]}")
+                if input_scaled.shape[1] != len(required_features):
+                    st.error(f"Input shape mismatch. Expected {len(required_features)} features, got {input_scaled.shape[1]}")
                     st.stop()
 
                 # Make Prediction
@@ -235,7 +236,6 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
 
 # Footer
 st.write("-----")
