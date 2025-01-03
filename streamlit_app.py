@@ -201,10 +201,16 @@ elif options == "Prediction":
                     # Ensure input matches model input shape
                     input_processed = pd.DataFrame(input_scaled, columns=numerical_features)
                     expected_shape = model.input_shape[1]
+
+                    # Adjust input size if necessary
                     if input_processed.shape[1] < expected_shape:
                         for i in range(input_processed.shape[1], expected_shape):
-                            col_name = f"dummy_feature_{i}"
-                            input_processed[col_name] = 0.0
+                            # Rotate through the slider column names for padding
+                            col_name = numerical_features[(i - input_processed.shape[1]) % len(numerical_features)]
+                            input_processed[col_name] = input_processed[col_name].mean()  # Use mean for padding
+
+                    # Reorder columns to match expected shape
+                    input_processed = input_processed.iloc[:, :expected_shape]
 
                     # Make Prediction
                     prediction = model.predict(input_processed)
@@ -216,16 +222,13 @@ elif options == "Prediction":
                     elif prediction_value > 0.99:
                         prediction_value = np.random.uniform(0.95, 0.99)  # Avoid exact 1.00
 
-                    # Prediction Class Logic
+                    # Determine prediction class with middle class logic
                     if prediction_value < 0.4:
                         prediction_class = "Low Demand"
-                        actionable_message = "Reduce inventory to minimize waste and consider offering promotions."
                     elif 0.4 <= prediction_value <= 0.7:
                         prediction_class = "Moderate Demand"
-                        actionable_message = "Ensure inventory levels are balanced to meet customer needs without overstocking."
                     else:
                         prediction_class = "High Demand"
-                        actionable_message = "Consider increasing inventory for critical items to avoid stockouts and optimize sales."
 
                     # Display Results
                     st.subheader("Prediction Results")
@@ -235,11 +238,18 @@ elif options == "Prediction":
                     # Actionable Insights
                     st.subheader("Actionable Insights")
                     if prediction_class == "High Demand":
-                        st.success(actionable_message)
+                        st.success(
+                            "Based on the prediction, this restaurant location is expected to experience **high demand**. "
+                            "Consider increasing inventory for critical items to avoid stockouts and optimize sales."
+                        )
                     elif prediction_class == "Moderate Demand":
-                        st.info(actionable_message)
+                        st.info(
+                            "The prediction indicates **moderate demand**. Balance inventory levels cautiously and monitor sales trends."
+                        )
                     else:
-                        st.warning(actionable_message)
+                        st.warning(
+                            "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+                        )
 
                 except Exception as e:
                     st.error(f"Error during prediction: {str(e)}")
