@@ -242,7 +242,6 @@ elif options == "Prediction":
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
 
-
 # Footer
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
