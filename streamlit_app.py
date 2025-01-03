@@ -179,7 +179,7 @@ elif options == "Prediction":
             else:
                 try:
                     # Load model
-                    model = load_model("my_keras_model.h5")
+                    model = load_model("my_keras_model2.h5")
 
                     # Prepare Input Data
                     input_df = pd.DataFrame([input_data])
