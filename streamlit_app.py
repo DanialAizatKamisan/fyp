@@ -210,6 +210,10 @@ elif options == "Prediction":
                     prediction = model.predict(input_processed)
                     prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
+                    # Adjust prediction for testing
+                    debug_message = f"Raw Prediction Confidence: {prediction_value:.4f}"
+                    st.write(debug_message)  # Debugging output for verification
+
                     # Handle extreme values
                     if prediction_value < 0.01:
                         prediction_value = np.random.uniform(0.01, 0.05)  # Avoid exact 0.00
