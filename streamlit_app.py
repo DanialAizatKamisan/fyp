@@ -176,7 +176,7 @@ elif options == "Prediction":
         if st.button("Predict", key="predict_button"):
             try:
                 # Reload the model fresh every time to avoid state caching
-                model = load_model("my_keras_model.h5")
+                model = load_model("my_keras_model2.h5")
 
                 # Prepare Input Data
                 input_df = pd.DataFrame([input_data])
