@@ -228,14 +228,33 @@ elif options == "Prediction":
 
                 # Gauge Visualization
                 st.subheader("Confidence Gauge")
-                fig, ax = plt.subplots(figsize=(6, 1))
-                ax.barh(['Confidence'], [prediction_value], color='blue', height=0.3)
-                ax.set_xlim(0, 1)
-                ax.set_xticks([0, 0.25, 0.5, 0.75, 1])
-                ax.set_xticklabels(['0%', '25%', '50%', '75%', '100%'])
-                ax.set_title("Prediction Confidence")
-                ax.set_xlabel("Confidence Level")
-                st.pyplot(fig)
+                from plotly.graph_objects import Figure, Indicator
+
+                fig = Figure()
+                fig.add_trace(Indicator(
+                    mode="gauge+number",
+                    value=prediction_value * 100,  # Convert to percentage
+                    gauge={
+                        "axis": {"range": [0, 100]},
+                        "bar": {"color": "orange"},
+                        "steps": [
+                            {"range": [0, 40], "color": "red"},
+                            {"range": [40, 70], "color": "yellow"},
+                            {"range": [70, 100], "color": "green"},
+                        ],
+                        "threshold": {
+                            "line": {"color": "black", "width": 4},
+                            "thickness": 0.75,
+                            "value": prediction_value * 100
+                        },
+                    },
+                    number={"suffix": "%"},
+                ))
+                fig.update_layout(
+                    margin={"t": 0, "b": 0, "l": 0, "r": 0},
+                    height=250,
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
                 # Actionable Insights
                 st.subheader("Actionable Insights")
@@ -259,6 +278,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 
 # Footer
