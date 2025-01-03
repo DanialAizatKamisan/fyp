@@ -95,6 +95,12 @@ if options == "Home":
 # Visualization Section
 elif options == "Visualizations":
     st.header("Visualizations: Trends and Insights")
+    st.info("""
+    **How to use this section:**
+    - Explore trends in unit sales and waste data using interactive graphs.
+    - Select a categorical column from the dropdown to view distribution insights.
+    - Use the visualizations to understand consumer behavior and operational patterns.
+    """)
     
     # Sales Distribution
     if 'unit_sales(in millions)' in data.columns:
@@ -128,8 +134,12 @@ elif options == "Visualizations":
 # Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
-    st.write("Use this section to predict consumer trends and estimate resource requirements.")
-
+    st.info("""
+    **How to use this section:**
+    - Use the slider to adjust the **Estimated Daily Sales Revenue (Rm)**.
+    - The system will estimate the corresponding meat usage and operational costs automatically.
+    - Click the "Predict" button to generate demand predictions and actionable insights.
+    """)
     try:
         # Define all features
         required_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
