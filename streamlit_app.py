@@ -131,6 +131,9 @@ elif options == "Visualizations":
         plt.xticks(rotation=45)
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
+        
+import plotly.graph_objects as go
+
 # Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
@@ -224,6 +227,28 @@ elif options == "Prediction":
                 st.write(f"Predicted Class: **{prediction_class}**")
                 st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
+                # Gauge Visualization
+                fig = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=prediction_value * 100,
+                    title={'text': "Demand Prediction (%)"},
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'steps': [
+                            {'range': [0, 40], 'color': "lightgray"},
+                            {'range': [40, 70], 'color': "yellow"},
+                            {'range': [70, 100], 'color': "green"}
+                        ],
+                        'threshold': {
+                            'line': {'color': "red", 'width': 4},
+                            'thickness': 0.75,
+                            'value': prediction_value * 100
+                        }
+                    }
+                ))
+
+                st.plotly_chart(fig, use_container_width=True)
+
                 # Actionable Insights
                 st.subheader("Actionable Insights")
                 if prediction_class == "High Demand":
@@ -246,6 +271,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 # Footer
 st.write("-----")
