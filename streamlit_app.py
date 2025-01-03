@@ -132,14 +132,13 @@ elif options == "Prediction":
     st.write("Use this section to predict consumer trends and estimate resource requirements.")
 
     try:
-        # Define numerical features
+        # Define the main numerical feature and dependent features
         numerical_features = ['store_sales(in millions)']  # User interacts only with Sales Revenue slider
-        fixed_features = ['meat_sqft', 'store_cost(in millions)']  # Dependent values to estimate
+        fixed_features = ['meat_sqft', 'store_cost(in millions)']  # Additional features used for prediction
 
         # Input Form for Numerical Features
         st.subheader("Input Features")
         input_data = {}
-        invalid_input = False  # Flag to track invalid inputs
 
         # Sales Revenue Slider
         if 'store_sales(in millions)' in data.columns:
@@ -183,17 +182,17 @@ elif options == "Prediction":
 
                 # Preprocess the input
                 scaler = StandardScaler()
-                scaler.fit(data[numerical_features + fixed_features])  # Fit scaler on relevant columns
+                scaler.fit(data[['store_sales(in millions)', 'meat_sqft', 'store_cost(in millions)']])  # Fit scaler on relevant columns
                 input_scaled = scaler.transform(input_df)
 
                 # Ensure input matches model input shape
-                input_processed = pd.DataFrame(input_scaled, columns=numerical_features + fixed_features)
+                input_processed = pd.DataFrame(input_scaled, columns=['store_sales(in millions)', 'meat_sqft', 'store_cost(in millions)'])
                 expected_shape = model.input_shape[1]
                 if input_processed.shape[1] != expected_shape:
                     st.error(f"Input shape mismatch. Expected {expected_shape} features, got {input_processed.shape[1]}")
                     st.stop()
 
-                # DEBUG: Show raw input and scaled values
+                # DEBUG: Display raw inputs, scaled inputs, and model output
                 st.write("### Debugging Information")
                 st.write("Raw Input Data:", input_df)
                 st.write("Scaled Input Data:", input_processed)
@@ -202,9 +201,6 @@ elif options == "Prediction":
                 prediction = model.predict(input_processed)
                 prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-                # Handle extreme values for better representation
-                prediction_value = max(0.01, min(0.99, prediction_value))  # Clamp to [0.01, 0.99]
-
                 # Determine prediction class
                 if prediction_value < 0.4:
                     prediction_class = "Low Demand"
@@ -212,6 +208,9 @@ elif options == "Prediction":
                     prediction_class = "Moderate Demand"
                 else:
                     prediction_class = "High Demand"
+
+                # DEBUG: Show raw prediction value
+                st.write(f"Raw Prediction Confidence: {prediction_value:.4f}")
 
                 # Display Results
                 st.subheader("Prediction Results")
@@ -240,8 +239,6 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
-
 
 
 # Footer
