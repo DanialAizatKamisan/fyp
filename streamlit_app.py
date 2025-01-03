@@ -218,12 +218,12 @@ elif options == "Prediction":
                 st.subheader("Actionable Insights")
                 if prediction_class == "High Demand":
                     st.success(
-                        "This restaurant location is expected to experience **high demand**. "
+                        "This restaurant is expected to experience **high demand**. "
                         "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
                     )
                 elif prediction_class == "Moderate Demand":
                     st.info(
-                        "This restaurant location is expected to experience **moderate demand**. "
+                        "This restaurant is expected to experience **moderate demand**. "
                         "Maintain a balanced resource inventory to optimize operations."
                     )
                 else:
