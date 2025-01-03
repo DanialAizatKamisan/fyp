@@ -150,8 +150,8 @@ elif options == "Prediction":
                     step = 1
 
                     # Update labels for display
-                    display_label = col.replace('store_sales(in millions)', 'Estimated Daily Sales Revenue (Rm(K))') \
-                                       .replace('store_cost(in millions)', 'Estimated Daily Operational Cost (Rm(K))')
+                    display_label = col.replace('store_sales(in millions)', 'Estimated Daily Sales Revenue (Rm)') \
+                                       .replace('store_cost(in millions)', 'Estimated Daily Operational Cost (Rm)')
                 else:
                     min_val = 0
                     max_val = int(data[col].max())
