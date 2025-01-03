@@ -193,15 +193,11 @@ elif options == "Prediction":
                     scaler = StandardScaler()
                     scaler.fit(data[numerical_features])
                     input_scaled = scaler.transform(input_df[numerical_features])
-
-                    # Reshape input to match model's expected shape
-                    # Add this line to check input shape
-                    st.write(f"Debug - Input shape before reshape: {input_scaled.shape}")
                     
                     # Ensure input matches model's expected shape
                     if input_scaled.shape[1] != 3:  # If not 3 features
                         st.error(f"Input shape mismatch. Expected 3 features, got {input_scaled.shape[1]}")
-                        st.stop()  # Using st.stop() instead of return
+                        st.stop()
                     
                     # Reshape if necessary - try both possibilities
                     try:
