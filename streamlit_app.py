@@ -129,131 +129,111 @@ elif options == "Visualizations":
 # Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
-    st.write("Use this section to predict consumer trends using the trained model.")
+    st.write("Use this section to predict consumer trends and estimate resource requirements.")
 
     try:
         # Define numerical features
-        numerical_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
+        numerical_features = ['store_sales(in millions)']  # User interacts only with Sales Revenue slider
+        fixed_features = ['meat_sqft', 'store_cost(in millions)']  # Dependent values to estimate
 
         # Input Form for Numerical Features
         st.subheader("Input Features")
         input_data = {}
-        invalid_input = False
+        invalid_input = False  # Flag to track invalid inputs
 
-        # Dynamically create sliders for numerical inputs
-        for col in numerical_features:
-            if col in data.columns:
-                # Handle scale for "in millions" columns
-                if 'in millions' in col:
-                    min_val = 0
-                    max_val = int(data[col].max() * 1000)
-                    mean_val = int(data[col].mean() * 1000)
-                    step = 1
+        # Sales Revenue Slider
+        if 'store_sales(in millions)' in data.columns:
+            min_val = 0
+            max_val = int(data['store_sales(in millions)'].max() * 1000)  # Convert millions to thousands
+            mean_val = int(data['store_sales(in millions)'].mean() * 1000)
+            step = 1
 
-                    display_label = col.replace('store_sales(in millions)', 'Estimated Daily Sales Revenue (Rm)') \
-                                    .replace('store_cost(in millions)', 'Estimated Daily Operational Cost (Rm)')
-                else:
-                    min_val = 0
-                    max_val = int(data[col].max())
-                    mean_val = int(data[col].mean())
-                    step = 1
+            # Slider for Sales Revenue
+            sales_revenue = st.slider(
+                "Select Estimated Daily Sales Revenue (Rm)",
+                min_value=min_val,
+                max_value=max_val,
+                value=mean_val,
+                step=step,
+                key="slider_sales_revenue"
+            )
+            input_data['store_sales(in millions)'] = sales_revenue / 1000  # Convert back to millions for prediction
 
-                    display_label = col.replace('meat_sqft', 'Estimated Meat Usage Estimate (Kg)')
+            # Estimate dependent features based on sales revenue
+            estimated_meat = sales_revenue * 0.15  # Assume 15% of sales revenue is meat usage
+            estimated_cost = sales_revenue * 0.25  # Assume 25% of sales revenue is operational cost
 
-                input_value = st.slider(
-                    f"Select {display_label}",
-                    min_value=min_val,
-                    max_value=max_val,
-                    value=mean_val,
-                    step=step,
-                    key=f"slider_{col}"
-                )
-                input_data[col] = input_value
+        # Display estimated values
+        st.write("### Estimated Resource Requirements")
+        st.write(f"- **Estimated Meat Usage**: {estimated_meat:.2f} Kg")
+        st.write(f"- **Estimated Daily Operational Cost**: Rm {estimated_cost:.2f}")
 
-                if input_value == 0:
-                    invalid_input = True
+        # Add estimated values to input data
+        input_data['meat_sqft'] = estimated_meat
+        input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
 
         # Prediction Button
         if st.button("Predict", key="predict_button"):
-            if invalid_input:
-                st.error("Error: All input values must be greater than 0. Please adjust the sliders.")
-            else:
-                try:
-                    # Load model
-                    model = load_model("my_keras_model2.h5")
+            try:
+                # Reload the model fresh every time to avoid state caching
+                model = load_model("my_keras_model2.h5")
 
-                    # Prepare Input Data
-                    input_df = pd.DataFrame([input_data])
+                # Prepare Input Data
+                input_df = pd.DataFrame([input_data])
 
-                    # Convert slider values back to "millions" scale
-                    for col in ['store_sales(in millions)', 'store_cost(in millions)']:
-                        if col in input_df.columns:
-                            input_df[col] = input_df[col] / 1000
+                # Preprocess the input
+                scaler = StandardScaler()
+                scaler.fit(data[numerical_features + fixed_features])  # Fit scaler on relevant columns
+                input_scaled = scaler.transform(input_df)
 
-                    # Preprocess the input
-                    scaler = StandardScaler()
-                    scaler.fit(data[numerical_features])
-                    input_scaled = scaler.transform(input_df[numerical_features])
-                    
-                    # Ensure input matches model's expected shape
-                    if input_scaled.shape[1] != 3:  # If not 3 features
-                        st.error(f"Input shape mismatch. Expected 3 features, got {input_scaled.shape[1]}")
-                        st.stop()
-                    
-                    # Reshape if necessary - try both possibilities
-                    try:
-                        # First try without reshaping
-                        prediction = model.predict(input_scaled)
-                    except:
-                        # If that fails, try reshaping to (1, 3)
-                        input_scaled = input_scaled.reshape(1, -1)
-                        prediction = model.predict(input_scaled)
+                # Ensure input matches model input shape
+                input_processed = pd.DataFrame(input_scaled, columns=numerical_features + fixed_features)
+                expected_shape = model.input_shape[1]
+                if input_processed.shape[1] < expected_shape:
+                    for i in range(input_processed.shape[1], expected_shape):
+                        col_name = f"dummy_feature_{i}"
+                        input_processed[col_name] = 0.0
 
-                    prediction_value = float(prediction[0][0])
+                # Make Prediction
+                prediction = model.predict(input_processed)
+                prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-                    # Handle extreme values
-                    if prediction_value < 0.01:
-                        prediction_value = np.random.uniform(0.01, 0.05)
-                    elif prediction_value > 0.99:
-                        prediction_value = np.random.uniform(0.95, 0.99)
+                # Determine prediction class
+                if prediction_value < 0.4:
+                    prediction_class = "Low Demand"
+                elif 0.4 <= prediction_value <= 0.7:
+                    prediction_class = "Moderate Demand"
+                else:
+                    prediction_class = "High Demand"
 
-                    # Determine prediction class
-                    if prediction_value < 0.4:
-                        prediction_class = "Low Demand"
-                    elif 0.4 <= prediction_value <= 0.7:
-                        prediction_class = "Moderate Demand"
-                    else:
-                        prediction_class = "High Demand"
+                # Display Results
+                st.subheader("Prediction Results")
+                st.write(f"Predicted Class: **{prediction_class}**")
+                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # Show confidence up to 4 decimal places
 
-                    # Display Results
-                    st.subheader("Prediction Results")
-                    st.write(f"Predicted Class: **{prediction_class}**")
-                    st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
+                # Actionable Insights
+                st.subheader("Actionable Insights")
+                if prediction_class == "High Demand":
+                    st.success(
+                        "This restaurant location is expected to experience **high demand**. "
+                        "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
+                    )
+                elif prediction_class == "Moderate Demand":
+                    st.info(
+                        "This restaurant location is expected to experience **moderate demand**. "
+                        "Maintain a balanced resource inventory to optimize operations."
+                    )
+                else:
+                    st.warning(
+                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+                    )
 
-                    # Actionable Insights
-                    st.subheader("Actionable Insights")
-                    if prediction_class == "High Demand":
-                        st.success(
-                            "Based on the prediction, this restaurant location is expected to experience **high demand**. "
-                            "Consider increasing inventory for critical items to avoid stockouts and optimize sales."
-                        )
-                    elif prediction_class == "Moderate Demand":
-                        st.info(
-                            "The prediction indicates **moderate demand**. Balance inventory levels cautiously and monitor sales trends."
-                        )
-                    else:
-                        st.warning(
-                            "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
-                        )
-
-                except Exception as e:
-                    st.error(f"Error during prediction: {str(e)}")
-                    st.error(f"Debug - Model input shape expected: {model.input_shape}")
-                    st.error(f"Debug - Actual input shape: {input_scaled.shape}")
+            except Exception as e:
+                st.error(f"Error during prediction: {str(e)}")
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-        
+
 # Footer
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
