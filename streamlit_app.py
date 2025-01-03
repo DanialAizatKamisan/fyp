@@ -210,23 +210,22 @@ elif options == "Prediction":
                     prediction = model.predict(input_processed)
                     prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-                    # Adjust prediction for testing
-                    debug_message = f"Raw Prediction Confidence: {prediction_value:.4f}"
-                    st.write(debug_message)  # Debugging output for verification
-
                     # Handle extreme values
                     if prediction_value < 0.01:
                         prediction_value = np.random.uniform(0.01, 0.05)  # Avoid exact 0.00
                     elif prediction_value > 0.99:
                         prediction_value = np.random.uniform(0.95, 0.99)  # Avoid exact 1.00
 
-                    # Determine prediction class
+                    # Prediction Class Logic
                     if prediction_value < 0.4:
                         prediction_class = "Low Demand"
+                        actionable_message = "Reduce inventory to minimize waste and consider offering promotions."
                     elif 0.4 <= prediction_value <= 0.7:
                         prediction_class = "Moderate Demand"
+                        actionable_message = "Ensure inventory levels are balanced to meet customer needs without overstocking."
                     else:
                         prediction_class = "High Demand"
+                        actionable_message = "Consider increasing inventory for critical items to avoid stockouts and optimize sales."
 
                     # Display Results
                     st.subheader("Prediction Results")
@@ -236,18 +235,11 @@ elif options == "Prediction":
                     # Actionable Insights
                     st.subheader("Actionable Insights")
                     if prediction_class == "High Demand":
-                        st.success(
-                            "Based on the prediction, this restaurant location is expected to experience **high demand**. "
-                            "Consider increasing inventory for critical items to avoid stockouts and optimize sales."
-                        )
+                        st.success(actionable_message)
                     elif prediction_class == "Moderate Demand":
-                        st.info(
-                            "The prediction indicates **moderate demand**. Ensure inventory levels are balanced to meet customer needs."
-                        )
+                        st.info(actionable_message)
                     else:
-                        st.warning(
-                            "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
-                        )
+                        st.warning(actionable_message)
 
                 except Exception as e:
                     st.error(f"Error during prediction: {str(e)}")
