@@ -193,6 +193,11 @@ elif options == "Prediction":
                     st.error(f"Input shape mismatch. Expected {expected_shape} features, got {input_processed.shape[1]}")
                     st.stop()
 
+                # DEBUG: Show raw input and scaled values
+                st.write("### Debugging Information")
+                st.write("Raw Input Data:", input_df)
+                st.write("Scaled Input Data:", input_processed)
+
                 # Make Prediction
                 prediction = model.predict(input_processed)
                 prediction_value = float(prediction[0][0])  # Ensure confidence is a float
@@ -235,6 +240,7 @@ elif options == "Prediction":
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 
 
