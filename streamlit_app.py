@@ -137,7 +137,7 @@ elif options == "Prediction":
         # Input Form for Numerical Features
         st.subheader("Input Features")
         input_data = {}
-        invalid_input = False  # Flag to track invalid inputs
+        invalid_input = False
 
         # Dynamically create sliders for numerical inputs
         for col in numerical_features:
@@ -145,34 +145,30 @@ elif options == "Prediction":
                 # Handle scale for "in millions" columns
                 if 'in millions' in col:
                     min_val = 0
-                    max_val = int(data[col].max() * 1000)  # Convert millions to thousands
+                    max_val = int(data[col].max() * 1000)
                     mean_val = int(data[col].mean() * 1000)
                     step = 1
 
-                    # Update labels for display
                     display_label = col.replace('store_sales(in millions)', 'Estimated Daily Sales Revenue (Rm)') \
-                                       .replace('store_cost(in millions)', 'Estimated Daily Operational Cost (Rm)')
+                                    .replace('store_cost(in millions)', 'Estimated Daily Operational Cost (Rm)')
                 else:
                     min_val = 0
                     max_val = int(data[col].max())
                     mean_val = int(data[col].mean())
                     step = 1
 
-                    # Update label for meat section
                     display_label = col.replace('meat_sqft', 'Estimated Meat Usage Estimate (Kg)')
 
-                # Slider with updated label
                 input_value = st.slider(
                     f"Select {display_label}",
                     min_value=min_val,
                     max_value=max_val,
                     value=mean_val,
                     step=step,
-                    key=f"slider_{col}"  # Unique key
+                    key=f"slider_{col}"
                 )
                 input_data[col] = input_value
 
-                # Check if the input is zero
                 if input_value == 0:
                     invalid_input = True
 
@@ -182,7 +178,7 @@ elif options == "Prediction":
                 st.error("Error: All input values must be greater than 0. Please adjust the sliders.")
             else:
                 try:
-                    # Reload the model fresh every time to avoid state caching
+                    # Load model
                     model = load_model("my_keras_model.h5")
 
                     # Prepare Input Data
@@ -191,27 +187,40 @@ elif options == "Prediction":
                     # Convert slider values back to "millions" scale
                     for col in ['store_sales(in millions)', 'store_cost(in millions)']:
                         if col in input_df.columns:
-                            input_df[col] = input_df[col] / 1000  # Convert thousands back to millions
+                            input_df[col] = input_df[col] / 1000
 
                     # Preprocess the input
                     scaler = StandardScaler()
-                    scaler.fit(data[numerical_features])  # Fit scaler on original data
-                    input_scaled = scaler.transform(input_df)
+                    scaler.fit(data[numerical_features])
+                    input_scaled = scaler.transform(input_df[numerical_features])
 
-                    # Ensure input matches model input shape exactly
-                    input_processed = pd.DataFrame(input_scaled, columns=numerical_features)
+                    # Reshape input to match model's expected shape
+                    # Add this line to check input shape
+                    st.write(f"Debug - Input shape before reshape: {input_scaled.shape}")
+                    
+                    # Ensure input matches model's expected shape
+                    if input_scaled.shape[1] != 3:  # If not 3 features
+                        st.error(f"Input shape mismatch. Expected 3 features, got {input_scaled.shape[1]}")
+                        return
+                    
+                    # Reshape if necessary - try both possibilities
+                    try:
+                        # First try without reshaping
+                        prediction = model.predict(input_scaled)
+                    except:
+                        # If that fails, try reshaping to (1, 3)
+                        input_scaled = input_scaled.reshape(1, -1)
+                        prediction = model.predict(input_scaled)
 
-                    # Make Prediction
-                    prediction = model.predict(input_processed)
-                    prediction_value = float(prediction[0][0])  # Ensure confidence is a float
+                    prediction_value = float(prediction[0][0])
 
                     # Handle extreme values
                     if prediction_value < 0.01:
-                        prediction_value = np.random.uniform(0.01, 0.05)  # Avoid exact 0.00
+                        prediction_value = np.random.uniform(0.01, 0.05)
                     elif prediction_value > 0.99:
-                        prediction_value = np.random.uniform(0.95, 0.99)  # Avoid exact 1.00
+                        prediction_value = np.random.uniform(0.95, 0.99)
 
-                    # Determine prediction class with middle class logic
+                    # Determine prediction class
                     if prediction_value < 0.4:
                         prediction_class = "Low Demand"
                     elif 0.4 <= prediction_value <= 0.7:
@@ -222,7 +231,7 @@ elif options == "Prediction":
                     # Display Results
                     st.subheader("Prediction Results")
                     st.write(f"Predicted Class: **{prediction_class}**")
-                    st.write(f"Prediction Confidence: **{prediction_value:.4f}**")  # Show confidence up to 4 decimal places
+                    st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
                     # Actionable Insights
                     st.subheader("Actionable Insights")
@@ -242,10 +251,11 @@ elif options == "Prediction":
 
                 except Exception as e:
                     st.error(f"Error during prediction: {str(e)}")
+                    st.error(f"Debug - Model input shape expected: {model.input_shape}")
+                    st.error(f"Debug - Actual input shape: {input_scaled.shape}")
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
 
 # Footer
 st.write("-----")
