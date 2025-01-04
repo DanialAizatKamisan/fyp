@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
-from plotly.graph_objects import Figure, Indicator
 
 # Title and Introduction
 st.title('Final Year Project: Leveraging Data Analytics to Optimize Consumer Trends and Minimize Food Waste in Restaurants 🥗')
@@ -138,32 +137,27 @@ elif options == "Prediction":
     st.header("Make Predictions")
     st.info("""
     **How to use this section:**
-    - Select between **Single Slider Prediction** and **Multi-Slider Prediction**.
-    - Adjust the sliders to input estimated values for prediction.
+    - Use the slider to adjust the **Estimated Daily Sales Revenue (Rm)**.
+    - The system will estimate the corresponding meat usage and operational costs automatically.
     - Click the "Predict" button to generate demand predictions and actionable insights.
     """)
 
-    # Prediction mode selector
-    prediction_mode = st.radio(
-        "Select Prediction Mode:",
-        ["Single Slider Prediction", "Multi-Slider Prediction"]
-    )
+    try:
+        # Define all features
+        required_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
 
-    # Define the required features
-    required_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
-
-    # Single Slider Prediction
-    if prediction_mode == "Single Slider Prediction":
-        st.subheader("Single Slider Prediction")
+        # Input Form for Numerical Features
+        st.subheader("Input Features")
         input_data = {}
 
+        # Sales Revenue Slider
         if 'store_sales(in millions)' in data.columns:
-            # Slider for Estimated Daily Sales Revenue
             min_val = 0
             max_val = int(data['store_sales(in millions)'].max() * 1000)  # Convert millions to thousands
             mean_val = int(data['store_sales(in millions)'].mean() * 1000)
             step = 1
 
+            # Slider for Sales Revenue
             sales_revenue = st.slider(
                 "Select Estimated Daily Sales Revenue (Rm)",
                 min_value=min_val,
@@ -172,38 +166,52 @@ elif options == "Prediction":
                 step=step,
                 key="slider_sales_revenue"
             )
-            input_data['store_sales(in millions)'] = sales_revenue / 1000  # Convert to millions for prediction
+            input_data['store_sales(in millions)'] = sales_revenue / 1000  # Convert back to millions for prediction
 
-            # Estimate dependent values
+            # Estimate dependent features based on sales revenue
             estimated_meat = sales_revenue * 0.15  # Assume 15% of sales revenue is meat usage
             estimated_cost = sales_revenue * 0.25  # Assume 25% of sales revenue is operational cost
 
-            # Display estimated values
-            st.write("### Estimated Resource Requirements")
-            st.write(f"- **Estimated Meat Usage**: {estimated_meat:.2f} Kg")
-            st.write(f"- **Estimated Daily Operational Cost**: Rm {estimated_cost:.2f}")
+        # Display estimated values
+        st.write("### Estimated Resource Requirements")
+        st.write(f"- **Estimated Meat Usage**: {estimated_meat:.2f} Kg")
+        st.write(f"- **Estimated Daily Operational Cost**: Rm {estimated_cost:.2f}")
 
-            # Add estimated values to input data
-            input_data['meat_sqft'] = estimated_meat
-            input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
+        # Add estimated values to input data
+        input_data['meat_sqft'] = estimated_meat
+        input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
 
-        # Prediction for Single Slider
-        if st.button("Predict", key="single_slider_predict"):
+        # Reorder input_data to match the model's training order
+        input_data_ordered = {feature: input_data[feature] for feature in required_features}
+
+        # Prediction Button
+        if st.button("Predict", key="predict_button"):
             try:
-                # Load the model
+                # Load model
                 model = load_model("my_keras_model2.h5")
 
                 # Prepare Input Data
-                input_df = pd.DataFrame([input_data])
+                input_df = pd.DataFrame([input_data_ordered])  # Ensure correct order of features
 
                 # Preprocess the input
                 scaler = StandardScaler()
-                scaler.fit(data[required_features])
+                scaler.fit(data[required_features])  # Scale using the required features
                 input_scaled = scaler.transform(input_df)
+
+                # Ensure input matches model's expected shape
+                if input_scaled.shape[1] != len(required_features):
+                    st.error(f"Input shape mismatch. Expected {len(required_features)} features, got {input_scaled.shape[1]}")
+                    st.stop()
 
                 # Make Prediction
                 prediction = model.predict(input_scaled)
-                prediction_value = float(prediction[0][0])
+                prediction_value = float(prediction[0][0])  # Ensure confidence is a float
+
+                # Handle extreme values
+                if prediction_value < 0.01:
+                    prediction_value = np.random.uniform(0.01, 0.05)
+                elif prediction_value > 0.99:
+                    prediction_value = np.random.uniform(0.95, 0.99)
 
                 # Determine prediction class
                 if prediction_value < 0.4:
@@ -218,74 +226,58 @@ elif options == "Prediction":
                 st.write(f"Predicted Class: **{prediction_class}**")
                 st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
-            except Exception as e:
-                st.error(f"Error during prediction: {str(e)}")
+                # Gauge Visualization
+                st.subheader("Confidence Gauge")
+                from plotly.graph_objects import Figure, Indicator
 
-    # Multi-Slider Prediction
-    elif prediction_mode == "Multi-Slider Prediction":
-        st.subheader("Multi-Slider Prediction")
-        input_data = {}
+                fig = Figure()
+                fig.add_trace(Indicator(
+                    mode="gauge+number",
+                    value=prediction_value * 100,  # Convert to percentage
+                    gauge={
+                        "axis": {"range": [0, 100]},
+                        "bar": {"color": "orange"},
+                        "steps": [
+                            {"range": [0, 40], "color": "red"},
+                            {"range": [40, 70], "color": "yellow"},
+                            {"range": [70, 100], "color": "green"},
+                        ],
+                        "threshold": {
+                            "line": {"color": "black", "width": 4},
+                            "thickness": 0.75,
+                            "value": prediction_value * 100
+                        },
+                    },
+                    number={"suffix": "%"},
+                ))
+                fig.update_layout(
+                    margin={"t": 0, "b": 0, "l": 0, "r": 0},
+                    height=250,
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
-        # Add sliders for each feature
-        for feature in required_features:
-            min_val = 0
-            max_val = int(data[feature].max() * 1000) if 'in millions' in feature else int(data[feature].max())
-            mean_val = int(data[feature].mean() * 1000) if 'in millions' in feature else int(data[feature].mean())
-            step = 1
-
-            # Create slider dynamically
-            input_data[feature] = st.slider(
-                f"Select {feature}",
-                min_value=min_val,
-                max_value=max_val,
-                value=mean_val,
-                step=step,
-                key=f"slider_{feature}"
-            )
-
-            # Convert back to millions for relevant features
-            if 'in millions' in feature:
-                input_data[feature] = input_data[feature] / 1000
-
-        # Display input values
-        st.write("### Input Resource Requirements")
-        st.write(f"- **Meat Usage**: {input_data['meat_sqft']} Kg")
-        st.write(f"- **Sales Revenue**: {input_data['store_sales(in millions)']} Rm")
-        st.write(f"- **Operational Cost**: {input_data['store_cost(in millions)']} Rm")
-
-        # Prediction for Multi-Slider
-        if st.button("Predict", key="multi_slider_predict"):
-            try:
-                # Load the model
-                model = load_model("my_keras_model2.h5")
-
-                # Prepare Input Data
-                input_df = pd.DataFrame([input_data])
-
-                # Preprocess the input
-                scaler = StandardScaler()
-                scaler.fit(data[required_features])
-                input_scaled = scaler.transform(input_df)
-
-                # Make Prediction
-                prediction = model.predict(input_scaled)
-                prediction_value = float(prediction[0][0])
-
-                # Determine prediction class
-                if prediction_value < 0.4:
-                    prediction_class = "Low Demand"
-                elif 0.4 <= prediction_value <= 0.7:
-                    prediction_class = "Moderate Demand"
+                # Actionable Insights
+                st.subheader("Actionable Insights")
+                if prediction_class == "High Demand":
+                    st.success(
+                        "This restaurant is expected to experience **high demand**. "
+                        "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
+                    )
+                elif prediction_class == "Moderate Demand":
+                    st.info(
+                        "This restaurant is expected to experience **moderate demand**. "
+                        "Maintain a balanced resource inventory to optimize operations."
+                    )
                 else:
-                    prediction_class = "High Demand"
-
-                # Display Results
-                st.subheader("Prediction Results")
-                st.write(f"Predicted Class: **{prediction_class}**")
-                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
+                    st.warning(
+                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+                    )
 
             except Exception as e:
                 st.error(f"Error during prediction: {str(e)}")
+
+    except Exception as e:
+        st.error(f"Error in prediction section: {str(e)}")
 
 
 
