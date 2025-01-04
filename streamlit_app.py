@@ -132,10 +132,7 @@ elif options == "Visualizations":
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
         
-# Define the features required by the model (update this based on your dataset)
-required_features = ['store_sales(in millions)', 'meat_sqft', 'store_cost(in millions)']
-
-# Prediction Section with New Page for Multi-Input
+# Prediction Section with Single and Multi-Input Modes
 elif options == "Prediction":
     st.header("Prediction")
     st.info("""
@@ -147,23 +144,17 @@ elif options == "Prediction":
     # Sub-navigation for prediction modes
     prediction_mode = st.radio("Choose a prediction mode:", ["Single Input", "Multi-Input"])
 
+    # Single Input Prediction
     if prediction_mode == "Single Input":
         st.subheader("Single Input Prediction")
-        st.info("""
-        Use the slider below to adjust the **Estimated Daily Sales Revenue (Rm)**.
-        The model will predict the corresponding demand class and confidence score.
-        """)
+        st.info("Use the slider below to adjust **Estimated Daily Sales Revenue (Rm)**.")
 
         # Slider for Sales Revenue
-        min_val = 0
-        max_val = int(data['store_sales(in millions)'].max() * 1000)  # Convert millions to thousands
-        mean_val = int(data['store_sales(in millions)'].mean() * 1000)
-
         sales_revenue = st.slider(
             "Select Estimated Daily Sales Revenue (Rm)",
-            min_value=min_val,
-            max_value=max_val,
-            value=mean_val,
+            min_value=0,
+            max_value=int(data['store_sales(in millions)'].max() * 1000),  # Convert millions to thousands
+            value=int(data['store_sales(in millions)'].mean() * 1000),
             step=1
         )
 
@@ -190,19 +181,64 @@ elif options == "Prediction":
                     "Moderate Demand" if prediction_value >= 0.4 else "Low Demand"
                 )
 
+                # Display Prediction Results
                 st.subheader("Prediction Results")
                 st.write(f"Predicted Class: **{prediction_class}**")
                 st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
+                # Gauge Visualization
+                from plotly.graph_objects import Figure, Indicator
+
+                fig = Figure()
+                fig.add_trace(Indicator(
+                    mode="gauge+number",
+                    value=prediction_value * 100,  # Convert to percentage
+                    gauge={
+                        "axis": {"range": [0, 100]},
+                        "bar": {"color": "orange"},
+                        "steps": [
+                            {"range": [0, 40], "color": "red"},
+                            {"range": [40, 70], "color": "yellow"},
+                            {"range": [70, 100], "color": "green"},
+                        ],
+                        "threshold": {
+                            "line": {"color": "black", "width": 4},
+                            "thickness": 0.75,
+                            "value": prediction_value * 100
+                        },
+                    },
+                    number={"suffix": "%"},
+                ))
+                fig.update_layout(
+                    margin={"t": 0, "b": 0, "l": 0, "r": 0},
+                    height=250,
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Actionable Insights
+                st.subheader("Actionable Insights")
+                if prediction_class == "High Demand":
+                    st.success(
+                        "This restaurant is expected to experience **high demand**. "
+                        "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
+                    )
+                elif prediction_class == "Moderate Demand":
+                    st.info(
+                        "This restaurant is expected to experience **moderate demand**. "
+                        "Maintain a balanced resource inventory to optimize operations."
+                    )
+                else:
+                    st.warning(
+                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+                    )
+
             except Exception as e:
                 st.error(f"Error during prediction: {str(e)}")
 
+    # Multi-Input Prediction
     elif prediction_mode == "Multi-Input":
         st.subheader("Multi-Input Prediction")
-        st.info("""
-        Use the sliders below to adjust **Sales Revenue (Rm)**, **Meat Usage (Kg)**, 
-        and **Operational Cost (Rm)** simultaneously. The model will predict the demand.
-        """)
+        st.info("Use the sliders below to adjust multiple inputs for prediction.")
 
         # Sliders for Multi-Input
         sales_revenue = st.slider(
@@ -250,12 +286,58 @@ elif options == "Prediction":
                     "Moderate Demand" if prediction_value >= 0.4 else "Low Demand"
                 )
 
+                # Display Prediction Results
                 st.subheader("Prediction Results")
                 st.write(f"Predicted Class: **{prediction_class}**")
                 st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
+                # Gauge Visualization
+                fig = Figure()
+                fig.add_trace(Indicator(
+                    mode="gauge+number",
+                    value=prediction_value * 100,  # Convert to percentage
+                    gauge={
+                        "axis": {"range": [0, 100]},
+                        "bar": {"color": "orange"},
+                        "steps": [
+                            {"range": [0, 40], "color": "red"},
+                            {"range": [40, 70], "color": "yellow"},
+                            {"range": [70, 100], "color": "green"},
+                        ],
+                        "threshold": {
+                            "line": {"color": "black", "width": 4},
+                            "thickness": 0.75,
+                            "value": prediction_value * 100
+                        },
+                    },
+                    number={"suffix": "%"},
+                ))
+                fig.update_layout(
+                    margin={"t": 0, "b": 0, "l": 0, "r": 0},
+                    height=250,
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Actionable Insights
+                st.subheader("Actionable Insights")
+                if prediction_class == "High Demand":
+                    st.success(
+                        "This restaurant is expected to experience **high demand**. "
+                        "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
+                    )
+                elif prediction_class == "Moderate Demand":
+                    st.info(
+                        "This restaurant is expected to experience **moderate demand**. "
+                        "Maintain a balanced resource inventory to optimize operations."
+                    )
+                else:
+                    st.warning(
+                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+                    )
+
             except Exception as e:
                 st.error(f"Error during prediction: {str(e)}")
+
 
 # Footer
 st.write("-----")
