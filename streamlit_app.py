@@ -278,14 +278,19 @@ elif options == "Prediction":
                             "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
                         )
 
+                    # Interactive Suggestions
+                    st.markdown("### Explore More")
+                    if st.button("Learn Best Practices"):
+                        st.markdown("[Best Practices in the Restaurant Industry](https://www.restaurant.org/education-and-resources)")
+
+                    if st.button("Marketing Strategy Recommendations"):
+                        st.markdown("[Marketing Strategies for Restaurants](https://www.foodandwine.com/marketing-ideas)")
+
                 except Exception as e:
                     st.error(f"Error during prediction: {str(e)}")
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
-
-
 
 # Footer
 st.write("-----")
