@@ -369,9 +369,11 @@ elif options == "Prediction":
                 else:
                     st.warning(
                         "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+                    )
 
-
-
+            except Exception as e:
+                st.error(f"Error during prediction: {str(e)}")
+                
 # Footer
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
