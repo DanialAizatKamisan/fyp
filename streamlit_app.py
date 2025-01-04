@@ -131,7 +131,8 @@ elif options == "Visualizations":
         plt.xticks(rotation=45)
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
-        
+
+
 # Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
@@ -181,103 +182,108 @@ elif options == "Prediction":
         input_data['meat_sqft'] = estimated_meat
         input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
 
-        # Reorder input_data to match the model's training order
-        input_data_ordered = {feature: input_data[feature] for feature in required_features}
+        # Validation for zero values
+        if sales_revenue == 0 or estimated_meat == 0 or estimated_cost == 0:
+            st.error("Error: Please select valid input values. None of the values can be zero.")
+        else:
+            # Reorder input_data to match the model's training order
+            input_data_ordered = {feature: input_data[feature] for feature in required_features}
 
-        # Prediction Button
-        if st.button("Predict", key="predict_button"):
-            try:
-                # Load model
-                model = load_model("my_keras_model2.h5")
+            # Prediction Button
+            if st.button("Predict", key="predict_button"):
+                try:
+                    # Load model
+                    model = load_model("my_keras_model2.h5")
 
-                # Prepare Input Data
-                input_df = pd.DataFrame([input_data_ordered])  # Ensure correct order of features
+                    # Prepare Input Data
+                    input_df = pd.DataFrame([input_data_ordered])  # Ensure correct order of features
 
-                # Preprocess the input
-                scaler = StandardScaler()
-                scaler.fit(data[required_features])  # Scale using the required features
-                input_scaled = scaler.transform(input_df)
+                    # Preprocess the input
+                    scaler = StandardScaler()
+                    scaler.fit(data[required_features])  # Scale using the required features
+                    input_scaled = scaler.transform(input_df)
 
-                # Ensure input matches model's expected shape
-                if input_scaled.shape[1] != len(required_features):
-                    st.error(f"Input shape mismatch. Expected {len(required_features)} features, got {input_scaled.shape[1]}")
-                    st.stop()
+                    # Ensure input matches model's expected shape
+                    if input_scaled.shape[1] != len(required_features):
+                        st.error(f"Input shape mismatch. Expected {len(required_features)} features, got {input_scaled.shape[1]}")
+                        st.stop()
 
-                # Make Prediction
-                prediction = model.predict(input_scaled)
-                prediction_value = float(prediction[0][0])  # Ensure confidence is a float
+                    # Make Prediction
+                    prediction = model.predict(input_scaled)
+                    prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-                # Handle extreme values
-                if prediction_value < 0.01:
-                    prediction_value = np.random.uniform(0.01, 0.05)
-                elif prediction_value > 0.99:
-                    prediction_value = np.random.uniform(0.95, 0.99)
+                    # Handle extreme values
+                    if prediction_value < 0.01:
+                        prediction_value = np.random.uniform(0.01, 0.05)
+                    elif prediction_value > 0.99:
+                        prediction_value = np.random.uniform(0.95, 0.99)
 
-                # Determine prediction class
-                if prediction_value < 0.4:
-                    prediction_class = "Low Demand"
-                elif 0.4 <= prediction_value <= 0.7:
-                    prediction_class = "Moderate Demand"
-                else:
-                    prediction_class = "High Demand"
+                    # Determine prediction class
+                    if prediction_value < 0.4:
+                        prediction_class = "Low Demand"
+                    elif 0.4 <= prediction_value <= 0.7:
+                        prediction_class = "Moderate Demand"
+                    else:
+                        prediction_class = "High Demand"
 
-                # Display Results
-                st.subheader("Prediction Results")
-                st.write(f"Predicted Class: **{prediction_class}**")
-                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
+                    # Display Results
+                    st.subheader("Prediction Results")
+                    st.write(f"Predicted Class: **{prediction_class}**")
+                    st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
-                # Gauge Visualization
-                st.subheader("Confidence Gauge")
-                from plotly.graph_objects import Figure, Indicator
+                    # Gauge Visualization
+                    st.subheader("Confidence Gauge")
+                    from plotly.graph_objects import Figure, Indicator
 
-                fig = Figure()
-                fig.add_trace(Indicator(
-                    mode="gauge+number",
-                    value=prediction_value * 100,  # Convert to percentage
-                    gauge={
-                        "axis": {"range": [0, 100]},
-                        "bar": {"color": "orange"},
-                        "steps": [
-                            {"range": [0, 40], "color": "red"},
-                            {"range": [40, 70], "color": "yellow"},
-                            {"range": [70, 100], "color": "green"},
-                        ],
-                        "threshold": {
-                            "line": {"color": "black", "width": 4},
-                            "thickness": 0.75,
-                            "value": prediction_value * 100
+                    fig = Figure()
+                    fig.add_trace(Indicator(
+                        mode="gauge+number",
+                        value=prediction_value * 100,  # Convert to percentage
+                        gauge={
+                            "axis": {"range": [0, 100]},
+                            "bar": {"color": "orange"},
+                            "steps": [
+                                {"range": [0, 40], "color": "red"},
+                                {"range": [40, 70], "color": "yellow"},
+                                {"range": [70, 100], "color": "green"},
+                            ],
+                            "threshold": {
+                                "line": {"color": "black", "width": 4},
+                                "thickness": 0.75,
+                                "value": prediction_value * 100
+                            },
                         },
-                    },
-                    number={"suffix": "%"},
-                ))
-                fig.update_layout(
-                    margin={"t": 0, "b": 0, "l": 0, "r": 0},
-                    height=250,
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                        number={"suffix": "%"},
+                    ))
+                    fig.update_layout(
+                        margin={"t": 0, "b": 0, "l": 0, "r": 0},
+                        height=250,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
-                # Actionable Insights
-                st.subheader("Actionable Insights")
-                if prediction_class == "High Demand":
-                    st.success(
-                        "This restaurant is expected to experience **high demand**. "
-                        "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
-                    )
-                elif prediction_class == "Moderate Demand":
-                    st.info(
-                        "This restaurant is expected to experience **moderate demand**. "
-                        "Maintain a balanced resource inventory to optimize operations."
-                    )
-                else:
-                    st.warning(
-                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
-                    )
+                    # Actionable Insights
+                    st.subheader("Actionable Insights")
+                    if prediction_class == "High Demand":
+                        st.success(
+                            "This restaurant is expected to experience **high demand**. "
+                            "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
+                        )
+                    elif prediction_class == "Moderate Demand":
+                        st.info(
+                            "This restaurant is expected to experience **moderate demand**. "
+                            "Maintain a balanced resource inventory to optimize operations."
+                        )
+                    else:
+                        st.warning(
+                            "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+                        )
 
-            except Exception as e:
-                st.error(f"Error during prediction: {str(e)}")
+                except Exception as e:
+                    st.error(f"Error during prediction: {str(e)}")
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
+
 
 
 
