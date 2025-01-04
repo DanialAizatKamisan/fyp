@@ -46,6 +46,9 @@ except Exception as e:
     st.error(f"Error loading data or model: {str(e)}")
     st.stop()
 
+# Define features required by the model
+required_features = ['store_sales(in millions)', 'meat_sqft', 'store_cost(in millions)']
+
 # Data Preprocessing Function
 def preprocess_input(input_df, original_data):
     """
@@ -337,7 +340,6 @@ elif options == "Prediction":
 
             except Exception as e:
                 st.error(f"Error during prediction: {str(e)}")
-
 
 # Footer
 st.write("-----")
