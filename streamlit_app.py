@@ -281,21 +281,35 @@ elif options == "Prediction":
                     st.markdown("### Explore More")
                     st.markdown(
                         """
-                        <a href="https://www.restaurant.org/education-and-resources" target="_blank" style="text-decoration:none;">
-                            <button style="padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007BFF; color: white; border: none; border-radius: 5px;">
-                                Learn Best Practices
-                            </button>
-                        </a>
+                        <style>
+                        .explore-button {
+                            display: inline-block;
+                            margin: 5px;
+                            padding: 10px 20px;
+                            font-size: 16px;
+                            cursor: pointer;
+                            background-color: #007bff;  /* Same as "Predict" button */
+                            color: white;
+                            border: none;
+                            border-radius: 5px;
+                            text-align: center;
+                            text-decoration: none;
+                        }
+                        .explore-button:hover {
+                            background-color: #0056b3;  /* Darker shade on hover */
+                        }
+                        </style>
                         """,
                         unsafe_allow_html=True,
                     )
 
                     st.markdown(
                         """
-                        <a href="https://www.foodandwine.com/marketing-ideas" target="_blank" style="text-decoration:none;">
-                            <button style="padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007BFF; color: white; border: none; border-radius: 5px;">
-                                Marketing Strategy Recommendations
-                            </button>
+                        <a href="https://www.restaurant.org/education-and-resources" target="_blank">
+                            <div class="explore-button">Learn Best Practices</div>
+                        </a>
+                        <a href="https://www.foodandwine.com/marketing-ideas" target="_blank">
+                            <div class="explore-button">Marketing Strategy Recommendations</div>
                         </a>
                         """,
                         unsafe_allow_html=True,
