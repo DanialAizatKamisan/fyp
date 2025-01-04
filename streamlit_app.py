@@ -305,7 +305,7 @@ elif options == "Prediction":
 
                     st.markdown(
                         """
-                        <a href="https://www.qsrmagazine.com/" target="_blank">
+                        <a href="https://pos.toasttab.com/blog/on-the-line" target="_blank">
                             <div class="explore-button">Learn Best Practices</div>
                         </a>
                         <a href="https://blog.clover.com/restaurant-marketing-strategies" target="_blank">
