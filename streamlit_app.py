@@ -133,7 +133,6 @@ elif options == "Visualizations":
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
         
-# Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
     st.info("""
@@ -188,17 +187,24 @@ elif options == "Prediction":
         if st.button("Predict", key="single_slider_predict"):
             try:
                 # Prepare Input Data
-                input_df = pd.DataFrame([input_data], columns=required_features)
+                input_df = pd.DataFrame([input_data])
+                
+                # Ensure the DataFrame has all the required columns in the correct order
+                input_df = input_df.reindex(columns=required_features)
 
-                # Preprocess the input
+                # Preprocess the input using the same scaler as training
                 scaler = StandardScaler()
                 scaler.fit(data[required_features])
                 input_scaled = scaler.transform(input_df)
 
-                # Make Prediction
-                prediction = model.predict(input_scaled)
-                prediction_value = float(prediction[0][0])
+                # Reshape the input to match the expected shape
+                input_reshaped = np.reshape(input_scaled, (1, -1))
 
+                # Make Prediction
+                prediction = model.predict(input_reshaped)
+                prediction_value = float(prediction[0])
+
+                # Rest of your visualization code remains the same...
                 # Determine prediction class
                 if prediction_value < 0.4:
                     prediction_class = "Low Demand"
@@ -214,8 +220,6 @@ elif options == "Prediction":
 
                 # Gauge Visualization
                 st.subheader("Confidence Gauge")
-                from plotly.graph_objects import Figure, Indicator
-
                 fig = Figure()
                 fig.add_trace(Indicator(
                     mode="gauge+number",
@@ -303,31 +307,25 @@ elif options == "Prediction":
         if st.button("Predict", key="multi_slider_predict"):
             try:
                 # Prepare Input Data
-                input_df = pd.DataFrame([input_data], columns=required_features)
+                input_df = pd.DataFrame([input_data])
+                
+                # Ensure the DataFrame has all the required columns in the correct order
+                input_df = input_df.reindex(columns=required_features)
 
-                # Preprocess the input
+                # Preprocess the input using the same scaler as training
                 scaler = StandardScaler()
                 scaler.fit(data[required_features])
                 input_scaled = scaler.transform(input_df)
 
+                # Reshape the input to match the expected shape
+                input_reshaped = np.reshape(input_scaled, (1, -1))
+
                 # Make Prediction
-                prediction = model.predict(input_scaled)
-                prediction_value = float(prediction[0][0])
+                prediction = model.predict(input_reshaped)
+                prediction_value = float(prediction[0])
 
-                # Determine prediction class
-                if prediction_value < 0.4:
-                    prediction_class = "Low Demand"
-                elif 0.4 <= prediction_value <= 0.7:
-                    prediction_class = "Moderate Demand"
-                else:
-                    prediction_class = "High Demand"
-
-                # Display Results
-                st.subheader("Prediction Results")
-                st.write(f"Predicted Class: **{prediction_class}**")
-                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
-
-                # Gauge Visualization
+                # Rest of your visualization code remains the same...
+                 # Gauge Visualization
                 st.subheader("Confidence Gauge")
                 fig = Figure()
                 fig.add_trace(Indicator(
@@ -354,23 +352,6 @@ elif options == "Prediction":
                     height=250,
                 )
                 st.plotly_chart(fig, use_container_width=True)
-
-                # Actionable Insights
-                st.subheader("Actionable Insights")
-                if prediction_class == "High Demand":
-                    st.success(
-                        "This restaurant is expected to experience **high demand**. "
-                        "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
-                    )
-                elif prediction_class == "Moderate Demand":
-                    st.info(
-                        "This restaurant is expected to experience **moderate demand**. "
-                        "Maintain a balanced resource inventory to optimize operations."
-                    )
-                else:
-                    st.warning(
-                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
-                    )
 
             except Exception as e:
                 st.error(f"Error during prediction: {str(e)}")
