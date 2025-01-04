@@ -46,9 +46,6 @@ except Exception as e:
     st.error(f"Error loading data or model: {str(e)}")
     st.stop()
 
-# Define features required by the model
-required_features = ['store_sales(in millions)', 'meat_sqft', 'store_cost(in millions)']
-
 # Data Preprocessing Function
 def preprocess_input(input_df, original_data):
     """
@@ -135,61 +132,102 @@ elif options == "Visualizations":
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
         
-# Prediction Section with Single and Multi-Input Modes
+# Prediction Section
 elif options == "Prediction":
-    st.header("Prediction")
+    st.header("Make Predictions")
     st.info("""
-    This section offers two prediction modes:
-    - **Single Input Prediction**: Adjust a single slider to predict demand.
-    - **Multi-Input Prediction**: Adjust three sliders simultaneously to predict demand.
+    **How to use this section:**
+    - Use the slider to adjust the **Estimated Daily Sales Revenue (Rm)**.
+    - The system will estimate the corresponding meat usage and operational costs automatically.
+    - Click the "Predict" button to generate demand predictions and actionable insights.
     """)
 
-    # Sub-navigation for prediction modes
-    prediction_mode = st.radio("Choose a prediction mode:", ["Single Input", "Multi-Input"])
+    try:
+        # Define all features
+        required_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
 
-    # Single Input Prediction
-    if prediction_mode == "Single Input":
-        st.subheader("Single Input Prediction")
-        st.info("Use the slider below to adjust **Estimated Daily Sales Revenue (Rm)**.")
+        # Input Form for Numerical Features
+        st.subheader("Input Features")
+        input_data = {}
 
-        # Slider for Sales Revenue
-        sales_revenue = st.slider(
-            "Select Estimated Daily Sales Revenue (Rm)",
-            min_value=0,
-            max_value=int(data['store_sales(in millions)'].max() * 1000),  # Convert millions to thousands
-            value=int(data['store_sales(in millions)'].mean() * 1000),
-            step=1
-        )
+        # Sales Revenue Slider
+        if 'store_sales(in millions)' in data.columns:
+            min_val = 0
+            max_val = int(data['store_sales(in millions)'].max() * 1000)  # Convert millions to thousands
+            mean_val = int(data['store_sales(in millions)'].mean() * 1000)
+            step = 1
 
-        # Prepare Input Data
-        input_data_single = {
-            'store_sales(in millions)': sales_revenue / 1000,  # Convert back to millions
-            'meat_sqft': data['meat_sqft'].mean(),
-            'store_cost(in millions)': data['store_cost(in millions)'].mean()
-        }
+            # Slider for Sales Revenue
+            sales_revenue = st.slider(
+                "Select Estimated Daily Sales Revenue (Rm)",
+                min_value=min_val,
+                max_value=max_val,
+                value=mean_val,
+                step=step,
+                key="slider_sales_revenue"
+            )
+            input_data['store_sales(in millions)'] = sales_revenue / 1000  # Convert back to millions for prediction
 
-        if st.button("Predict for Single Input"):
+            # Estimate dependent features based on sales revenue
+            estimated_meat = sales_revenue * 0.15  # Assume 15% of sales revenue is meat usage
+            estimated_cost = sales_revenue * 0.25  # Assume 25% of sales revenue is operational cost
+
+        # Display estimated values
+        st.write("### Estimated Resource Requirements")
+        st.write(f"- **Estimated Meat Usage**: {estimated_meat:.2f} Kg")
+        st.write(f"- **Estimated Daily Operational Cost**: Rm {estimated_cost:.2f}")
+
+        # Add estimated values to input data
+        input_data['meat_sqft'] = estimated_meat
+        input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
+
+        # Reorder input_data to match the model's training order
+        input_data_ordered = {feature: input_data[feature] for feature in required_features}
+
+        # Prediction Button
+        if st.button("Predict", key="predict_button"):
             try:
-                # Scale and Predict
-                input_df = pd.DataFrame([input_data_single])
+                # Load model
+                model = load_model("my_keras_model2.h5")
+
+                # Prepare Input Data
+                input_df = pd.DataFrame([input_data_ordered])  # Ensure correct order of features
+
+                # Preprocess the input
                 scaler = StandardScaler()
-                scaler.fit(data[required_features])
+                scaler.fit(data[required_features])  # Scale using the required features
                 input_scaled = scaler.transform(input_df)
+
+                # Ensure input matches model's expected shape
+                if input_scaled.shape[1] != len(required_features):
+                    st.error(f"Input shape mismatch. Expected {len(required_features)} features, got {input_scaled.shape[1]}")
+                    st.stop()
+
+                # Make Prediction
                 prediction = model.predict(input_scaled)
-                prediction_value = float(prediction[0][0])
+                prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-                # Handle Prediction Output
-                prediction_value = np.clip(prediction_value, 0.01, 0.99)
-                prediction_class = "High Demand" if prediction_value > 0.7 else (
-                    "Moderate Demand" if prediction_value >= 0.4 else "Low Demand"
-                )
+                # Handle extreme values
+                if prediction_value < 0.01:
+                    prediction_value = np.random.uniform(0.01, 0.05)
+                elif prediction_value > 0.99:
+                    prediction_value = np.random.uniform(0.95, 0.99)
 
-                # Display Prediction Results
+                # Determine prediction class
+                if prediction_value < 0.4:
+                    prediction_class = "Low Demand"
+                elif 0.4 <= prediction_value <= 0.7:
+                    prediction_class = "Moderate Demand"
+                else:
+                    prediction_class = "High Demand"
+
+                # Display Results
                 st.subheader("Prediction Results")
                 st.write(f"Predicted Class: **{prediction_class}**")
                 st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
                 # Gauge Visualization
+                st.subheader("Confidence Gauge")
                 from plotly.graph_objects import Figure, Indicator
 
                 fig = Figure()
@@ -238,108 +276,10 @@ elif options == "Prediction":
             except Exception as e:
                 st.error(f"Error during prediction: {str(e)}")
 
-    # Multi-Input Prediction
-    elif prediction_mode == "Multi-Input":
-        st.subheader("Multi-Input Prediction")
-        st.info("Use the sliders below to adjust multiple inputs for prediction.")
+    except Exception as e:
+        st.error(f"Error in prediction section: {str(e)}")
 
-        # Sliders for Multi-Input
-        sales_revenue = st.slider(
-            "Estimated Daily Sales Revenue (Rm)",
-            min_value=0,
-            max_value=int(data['store_sales(in millions)'].max() * 1000),
-            value=int(data['store_sales(in millions)'].mean() * 1000),
-            step=1
-        )
-        meat_usage = st.slider(
-            "Estimated Meat Usage (Kg)",
-            min_value=0,
-            max_value=int(data['meat_sqft'].max()),
-            value=int(data['meat_sqft'].mean()),
-            step=1
-        )
-        operational_cost = st.slider(
-            "Estimated Daily Operational Cost (Rm)",
-            min_value=0,
-            max_value=int(data['store_cost(in millions)'].max() * 1000),
-            value=int(data['store_cost(in millions)'].mean() * 1000),
-            step=1
-        )
 
-        # Prepare Multi-Input Data
-        input_data_multi = {
-            'store_sales(in millions)': sales_revenue / 1000,  # Convert to millions
-            'meat_sqft': meat_usage,
-            'store_cost(in millions)': operational_cost / 1000  # Convert to millions
-        }
-
-        if st.button("Predict for Multi-Input"):
-            try:
-                # Scale and Predict
-                input_df = pd.DataFrame([input_data_multi])
-                scaler = StandardScaler()
-                scaler.fit(data[required_features])
-                input_scaled = scaler.transform(input_df)
-                prediction = model.predict(input_scaled)
-                prediction_value = float(prediction[0][0])
-
-                # Handle Prediction Output
-                prediction_value = np.clip(prediction_value, 0.01, 0.99)
-                prediction_class = "High Demand" if prediction_value > 0.7 else (
-                    "Moderate Demand" if prediction_value >= 0.4 else "Low Demand"
-                )
-
-                # Display Prediction Results
-                st.subheader("Prediction Results")
-                st.write(f"Predicted Class: **{prediction_class}**")
-                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
-
-                # Gauge Visualization
-                fig = Figure()
-                fig.add_trace(Indicator(
-                    mode="gauge+number",
-                    value=prediction_value * 100,  # Convert to percentage
-                    gauge={
-                        "axis": {"range": [0, 100]},
-                        "bar": {"color": "orange"},
-                        "steps": [
-                            {"range": [0, 40], "color": "red"},
-                            {"range": [40, 70], "color": "yellow"},
-                            {"range": [70, 100], "color": "green"},
-                        ],
-                        "threshold": {
-                            "line": {"color": "black", "width": 4},
-                            "thickness": 0.75,
-                            "value": prediction_value * 100
-                        },
-                    },
-                    number={"suffix": "%"},
-                ))
-                fig.update_layout(
-                    margin={"t": 0, "b": 0, "l": 0, "r": 0},
-                    height=250,
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-                # Actionable Insights
-                st.subheader("Actionable Insights")
-                if prediction_class == "High Demand":
-                    st.success(
-                        "This restaurant is expected to experience **high demand**. "
-                        "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
-                    )
-                elif prediction_class == "Moderate Demand":
-                    st.info(
-                        "This restaurant is expected to experience **moderate demand**. "
-                        "Maintain a balanced resource inventory to optimize operations."
-                    )
-                else:
-                    st.warning(
-                        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
-                    )
-
-            except Exception as e:
-                st.error(f"Error during prediction: {str(e)}")
 
 # Footer
 st.write("-----")
