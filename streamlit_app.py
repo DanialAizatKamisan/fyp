@@ -178,10 +178,6 @@ elif options == "Prediction":
         st.write(f"- **Estimated Meat Usage**: {estimated_meat:.2f} Kg")
         st.write(f"- **Estimated Daily Operational Cost**: Rm {estimated_cost:.2f}")
 
-        # Add estimated values to input data
-        input_data['meat_sqft'] = estimated_meat
-        input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
-
         # Validation for zero values
         if sales_revenue == 0 or estimated_meat == 0 or estimated_cost == 0:
             st.error("Error: Please select valid input values. None of the values can be zero.")
@@ -278,14 +274,19 @@ elif options == "Prediction":
                             "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
                         )
 
+                    # Interactive "Explore More" Button
+                    st.markdown("### Explore More")
+                    if st.button("Learn Best Practices for Restaurants"):
+                        st.markdown("""
+                            - [Restaurant Sustainability Tips](https://www.restaurant.org/education-and-resources/sustainability)
+                            - [Marketing Strategies for Restaurants](https://www.indeed.com/career-advice/career-development/restaurant-marketing-strategies)
+                        """, unsafe_allow_html=True)
+
                 except Exception as e:
                     st.error(f"Error during prediction: {str(e)}")
 
     except Exception as e:
         st.error(f"Error in prediction section: {str(e)}")
-
-
-
 
 # Footer
 st.write("-----")
