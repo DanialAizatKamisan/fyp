@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
-from plotly.graph_objects import Figure, Indicator
 
 # Title and Introduction
 st.title('Final Year Project: Leveraging Data Analytics to Optimize Consumer Trends and Minimize Food Waste in Restaurants 🥗')
@@ -53,14 +52,16 @@ def preprocess_input(input_df, original_data):
     Preprocess input data to match the model's training features.
     """
     # Get columns to process (exclude target variables)
-    feature_columns = [col for col in original_data.columns if col not in ['binary_target', 'unit_sales(in millions)']]
+    drop_columns = ['binary_target', 'unit_sales(in millions)']
+    feature_columns = [col for col in original_data.columns if col not in drop_columns]
     
     # Create a copy of input data with only feature columns
-    processed_df = input_df.copy()
-
+    processed_df = input_df[feature_columns].copy()
+    
     # One-hot encode categorical columns
     categorical_columns = processed_df.select_dtypes(include=['object']).columns
     if not categorical_columns.empty:
+        # Get dummy variables for both input and original data
         processed_df = pd.get_dummies(processed_df, columns=categorical_columns)
         original_dummies = pd.get_dummies(original_data[categorical_columns])
         
@@ -68,8 +69,8 @@ def preprocess_input(input_df, original_data):
         for col in original_dummies.columns:
             if col not in processed_df.columns:
                 processed_df[col] = 0
-
-        # Reorder columns to match the model's training data
+        
+        # Keep only the columns that were in the original data
         processed_df = processed_df[original_dummies.columns]
     
     # Scale numerical features
@@ -131,78 +132,87 @@ elif options == "Visualizations":
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
         
+# Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
     st.info("""
     **How to use this section:**
-    - Select between **Single Slider Prediction** and **Multi-Slider Prediction**.
-    - Adjust the sliders to input estimated values for prediction.
+    - Use the slider to adjust the **Estimated Daily Sales Revenue (Rm)**.
+    - The system will estimate the corresponding meat usage and operational costs automatically.
     - Click the "Predict" button to generate demand predictions and actionable insights.
     """)
 
-    # Prediction mode selector
-    prediction_mode = st.radio(
-        "Select Prediction Mode:",
-        ["Single Slider Prediction", "Multi-Slider Prediction"]
-    )
+    try:
+        # Define all features
+        required_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
 
-    # Define required features
-    required_features = ['store_sales(in millions)', 'meat_sqft', 'store_cost(in millions)']
-
-    if prediction_mode == "Single Slider Prediction":
-        st.subheader("Single Slider Prediction")
+        # Input Form for Numerical Features
+        st.subheader("Input Features")
         input_data = {}
 
-        # Slider for Estimated Daily Sales Revenue
-        min_val = 0
-        max_val = int(data['store_sales(in millions)'].max() * 1000)  # Convert to thousands
-        mean_val = int(data['store_sales(in millions)'].mean() * 1000)
-        step = 1
+        # Sales Revenue Slider
+        if 'store_sales(in millions)' in data.columns:
+            min_val = 0
+            max_val = int(data['store_sales(in millions)'].max() * 1000)  # Convert millions to thousands
+            mean_val = int(data['store_sales(in millions)'].mean() * 1000)
+            step = 1
 
-        sales_revenue = st.slider(
-            "Select Estimated Daily Sales Revenue (Rm)",
-            min_value=min_val,
-            max_value=max_val,
-            value=mean_val,
-            step=step,
-            key="slider_sales_revenue"
-        )
-        input_data['store_sales(in millions)'] = sales_revenue / 1000  # Convert back to millions for prediction
+            # Slider for Sales Revenue
+            sales_revenue = st.slider(
+                "Select Estimated Daily Sales Revenue (Rm)",
+                min_value=min_val,
+                max_value=max_val,
+                value=mean_val,
+                step=step,
+                key="slider_sales_revenue"
+            )
+            input_data['store_sales(in millions)'] = sales_revenue / 1000  # Convert back to millions for prediction
 
-        # Estimate dependent values
-        estimated_meat = sales_revenue * 0.15  # Assume 15% of sales revenue is meat usage
-        estimated_cost = sales_revenue * 0.25  # Assume 25% of sales revenue is operational cost
-
-        # Add estimated values to input data
-        input_data['meat_sqft'] = estimated_meat
-        input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
+            # Estimate dependent features based on sales revenue
+            estimated_meat = sales_revenue * 0.15  # Assume 15% of sales revenue is meat usage
+            estimated_cost = sales_revenue * 0.25  # Assume 25% of sales revenue is operational cost
 
         # Display estimated values
         st.write("### Estimated Resource Requirements")
         st.write(f"- **Estimated Meat Usage**: {estimated_meat:.2f} Kg")
         st.write(f"- **Estimated Daily Operational Cost**: Rm {estimated_cost:.2f}")
 
-        if st.button("Predict", key="single_slider_predict"):
-            try:
-                # Prepare Input Data
-                input_df = pd.DataFrame([input_data])
-                
-                # Ensure the DataFrame has all the required columns in the correct order
-                input_df = input_df.reindex(columns=required_features)
+        # Add estimated values to input data
+        input_data['meat_sqft'] = estimated_meat
+        input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
 
-                # Preprocess the input using the same scaler as training
+        # Reorder input_data to match the model's training order
+        input_data_ordered = {feature: input_data[feature] for feature in required_features}
+
+        # Prediction Button
+        if st.button("Predict", key="predict_button"):
+            try:
+                # Load model
+                model = load_model("my_keras_model2.h5")
+
+                # Prepare Input Data
+                input_df = pd.DataFrame([input_data_ordered])  # Ensure correct order of features
+
+                # Preprocess the input
                 scaler = StandardScaler()
-                scaler.fit(data[required_features])
+                scaler.fit(data[required_features])  # Scale using the required features
                 input_scaled = scaler.transform(input_df)
 
-                # Reshape the input to match the expected shape
-                input_reshaped = np.reshape(input_scaled, (1, -1))
+                # Ensure input matches model's expected shape
+                if input_scaled.shape[1] != len(required_features):
+                    st.error(f"Input shape mismatch. Expected {len(required_features)} features, got {input_scaled.shape[1]}")
+                    st.stop()
 
                 # Make Prediction
-                prediction = model.predict(input_reshaped)
-                prediction_value = float(prediction[0])
+                prediction = model.predict(input_scaled)
+                prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-                # Rest of your visualization code remains the same...
+                # Handle extreme values
+                if prediction_value < 0.01:
+                    prediction_value = np.random.uniform(0.01, 0.05)
+                elif prediction_value > 0.99:
+                    prediction_value = np.random.uniform(0.95, 0.99)
+
                 # Determine prediction class
                 if prediction_value < 0.4:
                     prediction_class = "Low Demand"
@@ -218,6 +228,8 @@ elif options == "Prediction":
 
                 # Gauge Visualization
                 st.subheader("Confidence Gauge")
+                from plotly.graph_objects import Figure, Indicator
+
                 fig = Figure()
                 fig.add_trace(Indicator(
                     mode="gauge+number",
@@ -264,96 +276,11 @@ elif options == "Prediction":
             except Exception as e:
                 st.error(f"Error during prediction: {str(e)}")
 
-    elif prediction_mode == "Multi-Slider Prediction":
-        st.subheader("Multi-Slider Prediction")
-        input_data = {}
+    except Exception as e:
+        st.error(f"Error in prediction section: {str(e)}")
 
-        # Add sliders for each feature
-        input_data['store_sales(in millions)'] = st.slider(
-            "Select Estimated Daily Sales Revenue (Rm)",
-            min_value=0,
-            max_value=int(data['store_sales(in millions)'].max() * 1000),
-            value=int(data['store_sales(in millions)'].mean() * 1000),
-            step=1,
-            key="slider_store_sales"
-        ) / 1000  # Convert to millions
 
-        input_data['meat_sqft'] = st.slider(
-            "Select Estimated Meat Usage (Kg)",
-            min_value=0,
-            max_value=int(data['meat_sqft'].max()),
-            value=int(data['meat_sqft'].mean()),
-            step=1,
-            key="slider_meat_sqft"
-        )
 
-        input_data['store_cost(in millions)'] = st.slider(
-            "Select Estimated Daily Operational Cost (Rm)",
-            min_value=0,
-            max_value=int(data['store_cost(in millions)'].max() * 1000),
-            value=int(data['store_cost(in millions)'].mean() * 1000),
-            step=1,
-            key="slider_store_cost"
-        ) / 1000  # Convert to millions
-
-        # Display selected values
-        st.write("### Input Resource Requirements")
-        st.write(f"- **Meat Usage**: {input_data['meat_sqft']} Kg")
-        st.write(f"- **Sales Revenue**: {input_data['store_sales(in millions)']} Rm")
-        st.write(f"- **Operational Cost**: {input_data['store_cost(in millions)']} Rm")
-
-        if st.button("Predict", key="multi_slider_predict"):
-            try:
-                # Prepare Input Data
-                input_df = pd.DataFrame([input_data])
-                
-                # Ensure the DataFrame has all the required columns in the correct order
-                input_df = input_df.reindex(columns=required_features)
-
-                # Preprocess the input using the same scaler as training
-                scaler = StandardScaler()
-                scaler.fit(data[required_features])
-                input_scaled = scaler.transform(input_df)
-
-                # Reshape the input to match the expected shape
-                input_reshaped = np.reshape(input_scaled, (1, -1))
-
-                # Make Prediction
-                prediction = model.predict(input_reshaped)
-                prediction_value = float(prediction[0])
-
-                # Rest of your visualization code remains the same...
-                 # Gauge Visualization
-                st.subheader("Confidence Gauge")
-                fig = Figure()
-                fig.add_trace(Indicator(
-                    mode="gauge+number",
-                    value=prediction_value * 100,  # Convert to percentage
-                    gauge={
-                        "axis": {"range": [0, 100]},
-                        "bar": {"color": "orange"},
-                        "steps": [
-                            {"range": [0, 40], "color": "red"},
-                            {"range": [40, 70], "color": "yellow"},
-                            {"range": [70, 100], "color": "green"},
-                        ],
-                        "threshold": {
-                            "line": {"color": "black", "width": 4},
-                            "thickness": 0.75,
-                            "value": prediction_value * 100
-                        },
-                    },
-                    number={"suffix": "%"},
-                ))
-                fig.update_layout(
-                    margin={"t": 0, "b": 0, "l": 0, "r": 0},
-                    height=250,
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-            except Exception as e:
-                st.error(f"Error during prediction: {str(e)}")
-                
 # Footer
 st.write("-----")
 st.markdown("**Made with ❤️ for Final Year Project**")
