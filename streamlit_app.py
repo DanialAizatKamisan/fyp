@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
+from plotly.graph_objects import Figure, Indicator
 
 # Title and Introduction
 st.title('Final Year Project: Leveraging Data Analytics to Optimize Consumer Trends and Minimize Food Waste in Restaurants 🥗')
