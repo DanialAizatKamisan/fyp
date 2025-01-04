@@ -311,13 +311,58 @@ elif options == "Prediction":
                 else:
                     prediction_class = "High Demand"
 
-                # Display Results
-                st.subheader("Prediction Results")
-                st.write(f"Predicted Class: **{prediction_class}**")
-                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
+              # Display Results
+st.subheader("Prediction Results")
+st.write(f"Predicted Class: **{prediction_class}**")
+st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
-            except Exception as e:
-                st.error(f"Error during prediction: {str(e)}")
+# Gauge Visualization
+st.subheader("Confidence Gauge")
+from plotly.graph_objects import Figure, Indicator
+
+fig = Figure()
+fig.add_trace(Indicator(
+    mode="gauge+number",
+    value=prediction_value * 100,  # Convert to percentage
+    gauge={
+        "axis": {"range": [0, 100]},
+        "bar": {"color": "orange"},
+        "steps": [
+            {"range": [0, 40], "color": "red"},
+            {"range": [40, 70], "color": "yellow"},
+            {"range": [70, 100], "color": "green"},
+        ],
+        "threshold": {
+            "line": {"color": "black", "width": 4},
+            "thickness": 0.75,
+            "value": prediction_value * 100
+        },
+    },
+    number={"suffix": "%"},
+))
+fig.update_layout(
+    margin={"t": 0, "b": 0, "l": 0, "r": 0},
+    height=250,
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# Actionable Insights
+st.subheader("Actionable Insights")
+if prediction_class == "High Demand":
+    st.success(
+        "This restaurant is expected to experience **high demand**. "
+        "Ensure you have sufficient resources (meat, manpower, etc.) to meet this demand."
+    )
+elif prediction_class == "Moderate Demand":
+    st.info(
+        "This restaurant is expected to experience **moderate demand**. "
+        "Maintain a balanced resource inventory to optimize operations."
+    )
+else:
+    st.warning(
+        "The prediction indicates **low demand**. Reduce inventory to minimize waste and consider offering promotions."
+    )
+
 
 
 # Footer
