@@ -142,16 +142,16 @@ elif options == "Prediction":
     - Click the "Predict" button to generate demand predictions and actionable insights.
     """)
 
-    # Toggle between single-slider and multi-slider modes
+    # Prediction mode selector
     prediction_mode = st.radio(
         "Select Prediction Mode:",
-        ["Single Slider Prediction", "Multi-Slider Prediction"],
-        key="prediction_mode"
+        ("Single Slider Prediction", "Multi-Slider Prediction")
     )
 
-    # Define all required features
+    # Define all features
     required_features = ['meat_sqft', 'store_sales(in millions)', 'store_cost(in millions)']
 
+    # Single Slider Prediction
     if prediction_mode == "Single Slider Prediction":
         st.subheader("Single Slider Prediction")
         input_data = {}
@@ -178,122 +178,146 @@ elif options == "Prediction":
             estimated_meat = sales_revenue * 0.15  # Assume 15% of sales revenue is meat usage
             estimated_cost = sales_revenue * 0.25  # Assume 25% of sales revenue is operational cost
 
-        # Display estimated values
-        st.write("### Estimated Resource Requirements")
-        st.write(f"- **Estimated Meat Usage**: {estimated_meat:.2f} Kg")
-        st.write(f"- **Estimated Daily Operational Cost**: Rm {estimated_cost:.2f}")
+            # Add estimated values to input data
+            input_data['meat_sqft'] = estimated_meat
+            input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
 
-        # Add estimated values to input data
-        input_data['meat_sqft'] = estimated_meat
-        input_data['store_cost(in millions)'] = estimated_cost / 1000  # Convert to millions
+            # Reorder input_data to match the model's training order
+            input_data_ordered = {feature: input_data[feature] for feature in required_features}
 
+            # Display estimated values
+            st.write("### Estimated Resource Requirements")
+            st.write(f"- **Estimated Meat Usage**: {estimated_meat:.2f} Kg")
+            st.write(f"- **Estimated Daily Operational Cost**: Rm {estimated_cost:.2f}")
+
+            # Prediction Button
+            if st.button("Predict", key="single_slider_predict_button"):
+                try:
+                    # Load model
+                    model = load_model("my_keras_model2.h5")
+
+                    # Prepare Input Data
+                    input_df = pd.DataFrame([input_data_ordered])  # Ensure correct order of features
+
+                    # Preprocess the input
+                    scaler = StandardScaler()
+                    scaler.fit(data[required_features])  # Scale using the required features
+                    input_scaled = scaler.transform(input_df)
+
+                    # Ensure input matches model's expected shape
+                    if input_scaled.shape[1] != len(required_features):
+                        st.error(f"Input shape mismatch. Expected {len(required_features)} features, got {input_scaled.shape[1]}")
+                        st.stop()
+
+                    # Make Prediction
+                    prediction = model.predict(input_scaled)
+                    prediction_value = float(prediction[0][0])  # Ensure confidence is a float
+
+                    # Handle extreme values
+                    if prediction_value < 0.01:
+                        prediction_value = np.random.uniform(0.01, 0.05)
+                    elif prediction_value > 0.99:
+                        prediction_value = np.random.uniform(0.95, 0.99)
+
+                    # Determine prediction class
+                    if prediction_value < 0.4:
+                        prediction_class = "Low Demand"
+                    elif 0.4 <= prediction_value <= 0.7:
+                        prediction_class = "Moderate Demand"
+                    else:
+                        prediction_class = "High Demand"
+
+                    # Display Results
+                    st.subheader("Prediction Results")
+                    st.write(f"Predicted Class: **{prediction_class}**")
+                    st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
+
+                except Exception as e:
+                    st.error(f"Error during prediction: {str(e)}")
+
+    # Multi-Slider Prediction
     elif prediction_mode == "Multi-Slider Prediction":
         st.subheader("Multi-Slider Prediction")
         input_data = {}
 
-        # Create sliders for all three features
+        # Sliders for all features
         for feature in required_features:
-            if feature == 'store_sales(in millions)':
+            if 'in millions' in feature:
                 min_val = 0
                 max_val = int(data[feature].max() * 1000)
                 mean_val = int(data[feature].mean() * 1000)
-                slider_label = "Estimated Daily Sales Revenue (Rm)"
-            elif feature == 'meat_sqft':
+                step = 1
+
+                input_data[feature] = st.slider(
+                    f"Select {feature}",
+                    min_value=min_val,
+                    max_value=max_val,
+                    value=mean_val,
+                    step=step,
+                    key=f"multi_slider_{feature}"
+                ) / 1000  # Convert back to millions for prediction
+            else:
                 min_val = 0
                 max_val = int(data[feature].max())
                 mean_val = int(data[feature].mean())
-                slider_label = "Estimated Meat Usage (Kg)"
-            elif feature == 'store_cost(in millions)':
-                min_val = 0
-                max_val = int(data[feature].max() * 1000)
-                mean_val = int(data[feature].mean() * 1000)
-                slider_label = "Estimated Daily Operational Cost (Rm)"
+                step = 1
 
-            # Add slider to input data
-            slider_value = st.slider(
-                f"Select {slider_label}",
-                min_value=min_val,
-                max_value=max_val,
-                value=mean_val,
-                step=1,
-                key=f"multi_slider_{feature}"
-            )
-            if feature in ['store_sales(in millions)', 'store_cost(in millions)']:
-                input_data[feature] = slider_value / 1000  # Convert back to millions
-            else:
-                input_data[feature] = slider_value
+                input_data[feature] = st.slider(
+                    f"Select {feature}",
+                    min_value=min_val,
+                    max_value=max_val,
+                    value=mean_val,
+                    step=step,
+                    key=f"multi_slider_{feature}"
+                )
 
-    # Prediction logic remains the same
-    if st.button("Predict", key="predict_button"):
-        try:
-            # Load model
-            model = load_model("my_keras_model2.h5")
+        # Reorder input_data to match the model's training order
+        input_data_ordered = {feature: input_data[feature] for feature in required_features}
 
-            # Prepare Input Data
-            input_df = pd.DataFrame([input_data])  # Ensure correct order of features
+        # Prediction Button
+        if st.button("Predict", key="multi_slider_predict_button"):
+            try:
+                # Load model
+                model = load_model("my_keras_model2.h5")
 
-            # Preprocess the input
-            scaler = StandardScaler()
-            scaler.fit(data[required_features])  # Scale using the required features
-            input_scaled = scaler.transform(input_df)
+                # Prepare Input Data
+                input_df = pd.DataFrame([input_data_ordered])  # Ensure correct order of features
 
-            # Ensure input matches model's expected shape
-            if input_scaled.shape[1] != len(required_features):
-                st.error(f"Input shape mismatch. Expected {len(required_features)} features, got {input_scaled.shape[1]}")
-                st.stop()
+                # Preprocess the input
+                scaler = StandardScaler()
+                scaler.fit(data[required_features])  # Scale using the required features
+                input_scaled = scaler.transform(input_df)
 
-            # Make Prediction
-            prediction = model.predict(input_scaled)
-            prediction_value = float(prediction[0][0])  # Ensure confidence is a float
+                # Ensure input matches model's expected shape
+                if input_scaled.shape[1] != len(required_features):
+                    st.error(f"Input shape mismatch. Expected {len(required_features)} features, got {input_scaled.shape[1]}")
+                    st.stop()
 
-            # Handle extreme values
-            if prediction_value < 0.01:
-                prediction_value = np.random.uniform(0.01, 0.05)
-            elif prediction_value > 0.99:
-                prediction_value = np.random.uniform(0.95, 0.99)
+                # Make Prediction
+                prediction = model.predict(input_scaled)
+                prediction_value = float(prediction[0][0])  # Ensure confidence is a float
 
-            # Determine prediction class
-            if prediction_value < 0.4:
-                prediction_class = "Low Demand"
-            elif 0.4 <= prediction_value <= 0.7:
-                prediction_class = "Moderate Demand"
-            else:
-                prediction_class = "High Demand"
+                # Handle extreme values
+                if prediction_value < 0.01:
+                    prediction_value = np.random.uniform(0.01, 0.05)
+                elif prediction_value > 0.99:
+                    prediction_value = np.random.uniform(0.95, 0.99)
 
-            # Display Results
-            st.subheader("Prediction Results")
-            st.write(f"Predicted Class: **{prediction_class}**")
-            st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
+                # Determine prediction class
+                if prediction_value < 0.4:
+                    prediction_class = "Low Demand"
+                elif 0.4 <= prediction_value <= 0.7:
+                    prediction_class = "Moderate Demand"
+                else:
+                    prediction_class = "High Demand"
 
-            # Gauge Visualization
-            st.subheader("Confidence Gauge")
-            from plotly.graph_objects import Figure, Indicator
+                # Display Results
+                st.subheader("Prediction Results")
+                st.write(f"Predicted Class: **{prediction_class}**")
+                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
-            fig = Figure()
-            fig.add_trace(Indicator(
-                mode="gauge+number",
-                value=prediction_value * 100,  # Convert to percentage
-                gauge={
-                    "axis": {"range": [0, 100]},
-                    "bar": {"color": "orange"},
-                    "steps": [
-                        {"range": [0, 40], "color": "red"},
-                        {"range": [40, 70], "color": "yellow"},
-                        {"range": [70, 100], "color": "green"},
-                    ],
-                },
-                number={"suffix": "%"},
-            ))
-            fig.update_layout(
-                margin={"t": 0, "b": 0, "l": 0, "r": 0},
-                height=250,
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-        except Exception as e:
-            st.error(f"Error during prediction: {str(e)}")
-
-
+            except Exception as e:
+                st.error(f"Error during prediction: {str(e)}")
 
 
 # Footer
