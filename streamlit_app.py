@@ -288,7 +288,7 @@ elif options == "Prediction":
                             padding: 10px 20px;
                             font-size: 16px;
                             cursor: pointer;
-                            background-color: #007bff;  /* Same as "Predict" button */
+                            background-color: #007bff;  
                             color: white;
                             border: none;
                             border-radius: 5px;
@@ -296,7 +296,7 @@ elif options == "Prediction":
                             text-decoration: none;
                         }
                         .explore-button:hover {
-                            background-color: #0056b3;  /* Darker shade on hover */
+                            background-color: #0056b3;  
                         }
                         </style>
                         """,
@@ -305,7 +305,7 @@ elif options == "Prediction":
 
                     st.markdown(
                         """
-                        <a href="https://www.restaurant.org/education-and-resources" target="_blank">
+                        <a href="https://www.qsrmagazine.com/" target="_blank">
                             <div class="explore-button">Learn Best Practices</div>
                         </a>
                         <a href="https://blog.clover.com/restaurant-marketing-strategies" target="_blank">
