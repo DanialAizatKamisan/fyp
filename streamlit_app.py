@@ -132,7 +132,10 @@ elif options == "Visualizations":
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
         
-# Prediction Section with New Page for Three Sliders
+# Define the features required by the model (update this based on your dataset)
+required_features = ['store_sales(in millions)', 'meat_sqft', 'store_cost(in millions)']
+
+# Prediction Section with New Page for Multi-Input
 elif options == "Prediction":
     st.header("Prediction")
     st.info("""
@@ -152,161 +155,107 @@ elif options == "Prediction":
         """)
 
         # Slider for Sales Revenue
-        if 'store_sales(in millions)' in data.columns:
-            min_val = 0
-            max_val = int(data['store_sales(in millions)'].max() * 1000)  # Convert millions to thousands
-            mean_val = int(data['store_sales(in millions)'].mean() * 1000)
+        min_val = 0
+        max_val = int(data['store_sales(in millions)'].max() * 1000)  # Convert millions to thousands
+        mean_val = int(data['store_sales(in millions)'].mean() * 1000)
 
-            # Slider for Sales Revenue
-            sales_revenue = st.slider(
-                "Select Estimated Daily Sales Revenue (Rm)",
-                min_value=min_val,
-                max_value=max_val,
-                value=mean_val,
-                step=1,
-                key="slider_sales_revenue"
-            )
+        sales_revenue = st.slider(
+            "Select Estimated Daily Sales Revenue (Rm)",
+            min_value=min_val,
+            max_value=max_val,
+            value=mean_val,
+            step=1
+        )
 
-            # Prepare Input Data for Single Prediction
-            input_data_single = {
-                'store_sales(in millions)': sales_revenue / 1000,  # Convert back to millions
-                'meat_sqft': data['meat_sqft'].mean(),
-                'store_cost(in millions)': data['store_cost(in millions)'].mean()
-            }
+        # Prepare Input Data
+        input_data_single = {
+            'store_sales(in millions)': sales_revenue / 1000,  # Convert back to millions
+            'meat_sqft': data['meat_sqft'].mean(),
+            'store_cost(in millions)': data['store_cost(in millions)'].mean()
+        }
 
-            # Prediction Button for Single Input
-            if st.button("Predict for Single Input", key="predict_single"):
-                try:
-                    # Prepare Input Data
-                    input_df = pd.DataFrame([input_data_single])
+        if st.button("Predict for Single Input"):
+            try:
+                # Scale and Predict
+                input_df = pd.DataFrame([input_data_single])
+                scaler = StandardScaler()
+                scaler.fit(data[required_features])
+                input_scaled = scaler.transform(input_df)
+                prediction = model.predict(input_scaled)
+                prediction_value = float(prediction[0][0])
 
-                    # Preprocess Input Data
-                    scaler = StandardScaler()
-                    scaler.fit(data[required_features])
-                    input_scaled = scaler.transform(input_df)
+                # Handle Prediction Output
+                prediction_value = np.clip(prediction_value, 0.01, 0.99)
+                prediction_class = "High Demand" if prediction_value > 0.7 else (
+                    "Moderate Demand" if prediction_value >= 0.4 else "Low Demand"
+                )
 
-                    # Make Prediction
-                    prediction = model.predict(input_scaled)
-                    prediction_value = float(prediction[0][0])
+                st.subheader("Prediction Results")
+                st.write(f"Predicted Class: **{prediction_class}**")
+                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
-                    # Handle Extreme Values
-                    prediction_value = np.clip(prediction_value, 0.01, 0.99)
-
-                    # Determine Prediction Class
-                    if prediction_value < 0.4:
-                        prediction_class = "Low Demand"
-                    elif 0.4 <= prediction_value <= 0.7:
-                        prediction_class = "Moderate Demand"
-                    else:
-                        prediction_class = "High Demand"
-
-                    # Display Results
-                    st.subheader("Prediction Results")
-                    st.write(f"Predicted Class: **{prediction_class}**")
-                    st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
-
-                except Exception as e:
-                    st.error(f"Error during prediction: {str(e)}")
+            except Exception as e:
+                st.error(f"Error during prediction: {str(e)}")
 
     elif prediction_mode == "Multi-Input":
         st.subheader("Multi-Input Prediction")
         st.info("""
         Use the sliders below to adjust **Sales Revenue (Rm)**, **Meat Usage (Kg)**, 
-        and **Operational Cost (Rm)** simultaneously. 
-        The model will predict the corresponding demand class and confidence score.
+        and **Operational Cost (Rm)** simultaneously. The model will predict the demand.
         """)
 
-        # Sliders for Multiple Inputs
-        input_data_multi = {}
+        # Sliders for Multi-Input
+        sales_revenue = st.slider(
+            "Estimated Daily Sales Revenue (Rm)",
+            min_value=0,
+            max_value=int(data['store_sales(in millions)'].max() * 1000),
+            value=int(data['store_sales(in millions)'].mean() * 1000),
+            step=1
+        )
+        meat_usage = st.slider(
+            "Estimated Meat Usage (Kg)",
+            min_value=0,
+            max_value=int(data['meat_sqft'].max()),
+            value=int(data['meat_sqft'].mean()),
+            step=1
+        )
+        operational_cost = st.slider(
+            "Estimated Daily Operational Cost (Rm)",
+            min_value=0,
+            max_value=int(data['store_cost(in millions)'].max() * 1000),
+            value=int(data['store_cost(in millions)'].mean() * 1000),
+            step=1
+        )
 
-        # Slider for Sales Revenue
-        if 'store_sales(in millions)' in data.columns:
-            sales_revenue_min = 0
-            sales_revenue_max = int(data['store_sales(in millions)'].max() * 1000)  # Convert millions to thousands
-            sales_revenue_mean = int(data['store_sales(in millions)'].mean() * 1000)
+        # Prepare Multi-Input Data
+        input_data_multi = {
+            'store_sales(in millions)': sales_revenue / 1000,  # Convert to millions
+            'meat_sqft': meat_usage,
+            'store_cost(in millions)': operational_cost / 1000  # Convert to millions
+        }
 
-            sales_revenue = st.slider(
-                "Estimated Daily Sales Revenue (Rm)",
-                min_value=sales_revenue_min,
-                max_value=sales_revenue_max,
-                value=sales_revenue_mean,
-                step=1,
-                key="slider_sales_revenue_multi"
-            )
-            input_data_multi['store_sales(in millions)'] = sales_revenue / 1000  # Convert back to millions
-
-        # Slider for Meat Usage
-        if 'meat_sqft' in data.columns:
-            meat_usage_min = 0
-            meat_usage_max = int(data['meat_sqft'].max())
-            meat_usage_mean = int(data['meat_sqft'].mean())
-
-            meat_usage = st.slider(
-                "Estimated Meat Usage (Kg)",
-                min_value=meat_usage_min,
-                max_value=meat_usage_max,
-                value=meat_usage_mean,
-                step=1,
-                key="slider_meat_usage_multi"
-            )
-            input_data_multi['meat_sqft'] = meat_usage
-
-        # Slider for Operational Cost
-        if 'store_cost(in millions)' in data.columns:
-            operational_cost_min = 0
-            operational_cost_max = int(data['store_cost(in millions)'].max() * 1000)  # Convert millions to thousands
-            operational_cost_mean = int(data['store_cost(in millions)'].mean() * 1000)
-
-            operational_cost = st.slider(
-                "Estimated Daily Operational Cost (Rm)",
-                min_value=operational_cost_min,
-                max_value=operational_cost_max,
-                value=operational_cost_mean,
-                step=1,
-                key="slider_operational_cost_multi"
-            )
-            input_data_multi['store_cost(in millions)'] = operational_cost / 1000  # Convert back to millions
-
-        # Display Input Data
-        st.write("### Input Data for Multi-Input Prediction")
-        st.write(f"- **Estimated Daily Sales Revenue (Rm):** {sales_revenue}")
-        st.write(f"- **Estimated Meat Usage (Kg):** {meat_usage}")
-        st.write(f"- **Estimated Daily Operational Cost (Rm):** {operational_cost}")
-
-        # Prediction Button for Multi-Input
-        if st.button("Predict for Multi-Input", key="predict_multi"):
+        if st.button("Predict for Multi-Input"):
             try:
-                # Prepare Input Data
-                input_df_multi = pd.DataFrame([input_data_multi])
-
-                # Preprocess Input Data
+                # Scale and Predict
+                input_df = pd.DataFrame([input_data_multi])
                 scaler = StandardScaler()
                 scaler.fit(data[required_features])
-                input_scaled_multi = scaler.transform(input_df_multi)
+                input_scaled = scaler.transform(input_df)
+                prediction = model.predict(input_scaled)
+                prediction_value = float(prediction[0][0])
 
-                # Make Prediction
-                prediction_multi = model.predict(input_scaled_multi)
-                prediction_value_multi = float(prediction_multi[0][0])
+                # Handle Prediction Output
+                prediction_value = np.clip(prediction_value, 0.01, 0.99)
+                prediction_class = "High Demand" if prediction_value > 0.7 else (
+                    "Moderate Demand" if prediction_value >= 0.4 else "Low Demand"
+                )
 
-                # Handle Extreme Values
-                prediction_value_multi = np.clip(prediction_value_multi, 0.01, 0.99)
-
-                # Determine Prediction Class
-                if prediction_value_multi < 0.4:
-                    prediction_class_multi = "Low Demand"
-                elif 0.4 <= prediction_value_multi <= 0.7:
-                    prediction_class_multi = "Moderate Demand"
-                else:
-                    prediction_class_multi = "High Demand"
-
-                # Display Results
                 st.subheader("Prediction Results")
-                st.write(f"Predicted Class: **{prediction_class_multi}**")
-                st.write(f"Prediction Confidence: **{prediction_value_multi:.4f}**")
+                st.write(f"Predicted Class: **{prediction_class}**")
+                st.write(f"Prediction Confidence: **{prediction_value:.4f}**")
 
             except Exception as e:
                 st.error(f"Error during prediction: {str(e)}")
-
 
 # Footer
 st.write("-----")
