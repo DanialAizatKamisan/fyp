@@ -308,7 +308,7 @@ elif options == "Prediction":
                         <a href="https://www.restaurant.org/education-and-resources" target="_blank">
                             <div class="explore-button">Learn Best Practices</div>
                         </a>
-                        <a href="https://www.foodandwine.com/marketing-ideas" target="_blank">
+                        <a href="https://blog.clover.com/restaurant-marketing-strategies" target="_blank">
                             <div class="explore-button">Marketing Strategy Recommendations</div>
                         </a>
                         """,
