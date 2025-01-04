@@ -53,16 +53,14 @@ def preprocess_input(input_df, original_data):
     Preprocess input data to match the model's training features.
     """
     # Get columns to process (exclude target variables)
-    drop_columns = ['binary_target', 'unit_sales(in millions)']
-    feature_columns = [col for col in original_data.columns if col not in drop_columns]
+    feature_columns = [col for col in original_data.columns if col not in ['binary_target', 'unit_sales(in millions)']]
     
     # Create a copy of input data with only feature columns
-    processed_df = input_df[feature_columns].copy()
-    
+    processed_df = input_df.copy()
+
     # One-hot encode categorical columns
     categorical_columns = processed_df.select_dtypes(include=['object']).columns
     if not categorical_columns.empty:
-        # Get dummy variables for both input and original data
         processed_df = pd.get_dummies(processed_df, columns=categorical_columns)
         original_dummies = pd.get_dummies(original_data[categorical_columns])
         
@@ -70,8 +68,8 @@ def preprocess_input(input_df, original_data):
         for col in original_dummies.columns:
             if col not in processed_df.columns:
                 processed_df[col] = 0
-        
-        # Keep only the columns that were in the original data
+
+        # Reorder columns to match the model's training data
         processed_df = processed_df[original_dummies.columns]
     
     # Scale numerical features
