@@ -132,7 +132,6 @@ elif options == "Visualizations":
         plt.title(f"Distribution of {selected_cat}")
         st.pyplot(fig)
 
-
 # Prediction Section
 elif options == "Prediction":
     st.header("Make Predictions")
@@ -280,11 +279,27 @@ elif options == "Prediction":
 
                     # Interactive Suggestions
                     st.markdown("### Explore More")
-                    if st.button("Learn Best Practices"):
-                        st.markdown("[Best Practices in the Restaurant Industry](https://www.restaurant.org/education-and-resources)")
+                    st.markdown(
+                        """
+                        <a href="https://www.restaurant.org/education-and-resources" target="_blank" style="text-decoration:none;">
+                            <button style="padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007BFF; color: white; border: none; border-radius: 5px;">
+                                Learn Best Practices
+                            </button>
+                        </a>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
-                    if st.button("Marketing Strategy Recommendations"):
-                        st.markdown("[Marketing Strategies for Restaurants](https://www.foodandwine.com/marketing-ideas)")
+                    st.markdown(
+                        """
+                        <a href="https://www.foodandwine.com/marketing-ideas" target="_blank" style="text-decoration:none;">
+                            <button style="padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007BFF; color: white; border: none; border-radius: 5px;">
+                                Marketing Strategy Recommendations
+                            </button>
+                        </a>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
                 except Exception as e:
                     st.error(f"Error during prediction: {str(e)}")
